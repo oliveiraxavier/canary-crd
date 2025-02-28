@@ -1,0 +1,460 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+    control-plane: controller-manager
+  name: canary-deployment
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: canarydeployments.mox.app.br
+spec:
+  group: mox.app.br
+  names:
+    kind: CanaryDeployment
+    listKind: CanaryDeploymentList
+    plural: canarydeployments
+    singular: canarydeployment
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CanaryDeployment is the Schema for the canarydeployments API.
+        properties:
+          actualStep:
+            default: 0
+            format: int32
+            maximum: 100
+            minimum: 0
+            type: integer
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              appName:
+                minLength: 1
+                type: string
+              canary:
+                minLength: 1
+                type: string
+              stable:
+                minLength: 1
+                type: string
+              steps:
+                items:
+                  properties:
+                    pause:
+                      properties:
+                        hours:
+                          format: int32
+                          type: integer
+                        minutes:
+                          format: int32
+                          type: integer
+                        seconds:
+                          format: int32
+                          type: integer
+                      type: object
+                    setWeight:
+                      format: int32
+                      maximum: 100
+                      minimum: 1
+                      type: integer
+                  required:
+                  - setWeight
+                  type: object
+                type: array
+            required:
+            - appName
+            - canary
+            - stable
+            - steps
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-controller-manager
+  namespace: canary-deployment
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-leader-election-role
+  namespace: canary-deployment
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-canarydeployment-admin-role
+rules:
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments
+  verbs:
+  - '*'
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-canarydeployment-editor-role
+rules:
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-canarydeployment-viewer-role
+rules:
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: canary-deployment-manager-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - mox.app.br
+  resources:
+  - canarydeployments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - virtualservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - virtualservices/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - virtualservices/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: canary-deployment-metrics-auth-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: canary-deployment-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-leader-election-rolebinding
+  namespace: canary-deployment
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: canary-deployment-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: canary-deployment-controller-manager
+  namespace: canary-deployment
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+  name: canary-deployment-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: canary-deployment-manager-role
+subjects:
+- kind: ServiceAccount
+  name: canary-deployment-controller-manager
+  namespace: canary-deployment
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: canary-deployment-metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: canary-deployment-metrics-auth-role
+subjects:
+- kind: ServiceAccount
+  name: canary-deployment-controller-manager
+  namespace: canary-deployment
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+    control-plane: controller-manager
+  name: canary-deployment-controller-manager-metrics-service
+  namespace: canary-deployment
+spec:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: canary-deployments
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: canary-deployments
+    control-plane: controller-manager
+  name: canary-deployment-controller-manager
+  namespace: canary-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: canary-deployments
+      control-plane: controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app.kubernetes.io/name: canary-deployments
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --metrics-bind-address=:8443
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        command:
+        - /manager
+        image: oxmarcos/controller-canary-deployments:1.0.1
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        ports: []
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts: []
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: canary-deployment-controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes: []

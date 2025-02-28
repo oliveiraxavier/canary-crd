@@ -1,0 +1,43 @@
+apiVersion: mox.app.br/v1alpha1
+kind: CanaryDeployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+  name: canarydeployment-1
+spec:
+  appName: nginx
+  stable: "1.26-alpine"
+  canary: "1.27-alpine"
+  steps:
+  - setWeight: 10
+    pause: {seconds: 60}
+  - setWeight: 20
+    pause: {seconds: 50}
+  - setWeight: 50
+    pause: {seconds: 30}
+  - setWeight: 90
+    pause: {minutes: 1}
+  - setWeight: 100
+---
+apiVersion: mox.app.br/v1alpha1
+kind: CanaryDeployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+  name: canarydeployment-2
+spec:
+  appName: nginx-new
+  stable: "1.26-alpine"
+  canary: "1.27-alpine"
+  steps:
+  - setWeight: 8
+    pause: {seconds: 55}
+  - setWeight: 16
+    pause: {seconds: 50}
+  - setWeight: 45
+    pause: {seconds: 45}
+  - setWeight: 78
+    pause: {minutes: 1}
+  - setWeight: 98
+    pause: {minutes: 2}
+  - setWeight: 100
