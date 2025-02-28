@@ -151,27 +151,6 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
-  name: canary-deployment-canarydeployment-admin-role
-rules:
-- apiGroups:
-  - mox.app.br
-  resources:
-  - canarydeployments
-  verbs:
-  - '*'
-- apiGroups:
-  - mox.app.br
-  resources:
-  - canarydeployments/status
-  verbs:
-  - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: canary-deployments
   name: canary-deployment-canarydeployment-editor-role
 rules:
 - apiGroups:

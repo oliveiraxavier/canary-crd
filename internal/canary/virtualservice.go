@@ -127,3 +127,44 @@ func IsFullyPromoted(vs *istio.VirtualService) bool {
 	}
 	return fullyPromoted
 }
+
+func ResetFullPercentageToStable(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment, namespace string) (*istio.VirtualService, error) {
+	vs, err := GetVirtualServiceForDeployment(clientSet, canaryDeployment.Spec.AppName, namespace)
+
+	if err == nil {
+		originalVs := vs.DeepCopy()
+
+		if vs.Spec.Http == nil {
+			return nil, fmt.Errorf("http routes are empty. Please check the Virtual Service")
+		}
+
+		for i, httpRoute := range vs.Spec.Http {
+			for j, route := range httpRoute.Route {
+				subset := route.Destination.Subset
+
+				if subset == "stable" {
+					vs.Spec.Http[i].Route[j].Weight = 100
+				}
+
+				if subset == "canary" {
+					vs.Spec.Http[i].Route[j].Weight = 0
+				}
+			}
+		}
+
+		if originalVs.Spec.Http[0].Route[0].Weight == vs.Spec.Http[0].Route[0].Weight {
+			log.Custom.Info("Skip Virtual service values why not changes")
+			return vs, nil
+		}
+
+		err := (*clientSet).Patch(context.Background(), vs, client.MergeFrom(originalVs))
+
+		if err != nil {
+			return nil, err
+		}
+		log.Custom.Info("All traffic for virtual service " + canaryDeployment.Spec.AppName + " changed to 100% for stable deployment")
+		return vs, nil
+	}
+
+	return nil, err
+}

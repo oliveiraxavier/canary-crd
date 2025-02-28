@@ -48,9 +48,12 @@ type CanaryDeploymentReconciler struct {
 // +kubebuilder:rbac:groups=networking.istio.io,resources=virtualservices,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=networking.istio.io,resources=virtualservices/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=networking.istio.io,resources=virtualservices/finalizers,verbs=update
-
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-
+// +kubebuilder:rbac:groups=v1,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=v1,resources=configmaps/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=v1,resources=configmaps/finalizers,verbs=update
+// +kubebuilder:rbac:groups=v1,resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=v1,resources=secrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=v1,resources=secrets/finalizers,verbs=update
 func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = defaultlog.FromContext(ctx)
 
@@ -74,7 +77,16 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	stableVersion := canaryDeployment.Spec.Stable
 
 	if canary.IsFinished(canaryDeployment) {
-		log.Custom.Info("Canary deployment finished (" + appName + ")")
+		log.Custom.Info("Canary Deployment exists")
+		_, err = canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
+
+		if err != nil {
+			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		}
+		_, err := canary.ResetFullPercentageToStable(&r.Client, &canaryDeployment, namespace)
+		if err != nil {
+			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -92,16 +104,20 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 
 		canary.SetActualStep(&r.Client, &canaryDeployment)
-		// vs, _ :=
-		canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeployment, namespace)
+		vs, _ := canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeployment, namespace)
 
-		// if canary.IsFullyPromoted(vs) {
-		// 	log.Custom.Info("Canary deployment promoted (" + appName + ")")
-		// 	// TODO
-		// 	// Add function to move deploy canary to deploy stable
-		// 	// and change vs > route > destination > weight = 100 when subset = stable
-		// 	return ctrl.Result{}, nil
-		// }
+		if canary.IsFullyPromoted(vs) {
+			log.Custom.Info("Canary deployment promoted (" + appName + ")")
+			// TODO
+			// Add function to move deploy canary to deploy stable
+			// and change vs > route > destination > weight = 100 when subset = stable
+			// _, err = canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
+			if err != nil {
+				return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			}
+			// return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		}
 
 		timeDuration := canary.GetRequeueTime(&canaryDeployment)
 
