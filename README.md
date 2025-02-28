@@ -92,12 +92,63 @@ the project, i.e.:
 kubectl apply -f https://raw.githubusercontent.com/oliveiraxavier/canary-crd/<tag or branch>/dist/install.yaml
 ```
 
-3 . Using template to deploy controller and crd in your cluster
+3 . Deploy controller and crd in your cluster
 
 ```sh
 kubectl apply -f dist/install.yaml
 ```
 
+### Testing in cluster
+
+```sh
+kubectl apply -f dist/install.yaml
+kubectl apply -f config/sample-deploy/deploy-v1.yaml
+kubectl apply -f config/sample-deploy/deploy-v2.yaml
+kubectl apply -f config/samples/apps_v1alpha1_canarydeployment.yaml
+
+kubectl get vs nginx -n default -o yaml
+kubectl get vs nginx-new -n default -o yaml
+kubectl get deploy --l="run-type: stable" -n default
+kubectl get deploy --l="run-type: canary" -n default
+kubectl get canarydeployment canarydeployment-1 -n default -o yaml
+kubectl get canarydeployment canarydeployment-2 -n default -o yaml
+```
+
+### Structure of this CRD
+```yaml
+apiVersion: mox.app.br/v1alpha1
+kind: CanaryDeployment
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+  name: canarydeployment-2
+  namespace: default
+  resourceVersion: "224103"
+  uid: a15fcc18-c5cc-44b6-b829-9a1301784e9c
+actualStep: 0
+spec:
+  appName: nginx-new
+  canary: 1.27-alpine
+  stable: 1.26-alpine
+  steps:
+  - pause:
+      seconds: 120
+    setWeight: 10
+  - pause:
+      seconds: 90
+    setWeight: 20
+  - pause:
+      seconds: 240
+    setWeight: 45
+  - pause:
+      seconds: 90
+    setWeight: 75
+  - pause:
+      minutes: 5
+    setWeight: 89
+  - setWeight: 100
+```
 
 ### By providing a Helm Chart
 

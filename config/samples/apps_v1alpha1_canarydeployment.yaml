@@ -10,13 +10,13 @@ spec:
   canary: "1.27-alpine"
   steps:
   - setWeight: 10
-    pause: {seconds: 5}
-  # - setWeight: 20
-  #   pause: {seconds: 11}
-  # - setWeight: 50
-  #   pause: {seconds: 12}
-  # - setWeight: 90
-  #   pause: {seconds: 14}
+    pause: {seconds: 140}
+  - setWeight: 20
+    pause: {seconds: 240}
+  - setWeight: 45
+    pause: {seconds: 90}
+  - setWeight: 70
+    pause: {minutes: 2}
   - setWeight: 100
 ---
 apiVersion: mox.app.br/v1alpha1
@@ -30,14 +30,14 @@ spec:
   stable: "1.26-alpine"
   canary: "1.27-alpine"
   steps:
-  # - setWeight: 8
-  #   pause: {seconds: 20}
-  # - setWeight: 16
-  #   pause: {seconds: 10}
-  # - setWeight: 45
-  #   pause: {seconds: 10}
-  # - setWeight: 78
-  #   pause: {seconds: 10}
-  - setWeight: 98
-    pause: {seconds: 5}
+  - setWeight: 10
+    pause: {seconds: 120}
+  - setWeight: 20
+    pause: {seconds: 90}
+  - setWeight: 45
+    pause: {seconds: 240}
+  - setWeight: 75
+    pause: {seconds: 90}
+  - setWeight: 89
+    pause: {minutes: 5}
   - setWeight: 100
