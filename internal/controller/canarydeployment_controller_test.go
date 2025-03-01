@@ -18,9 +18,16 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	istio "istio.io/api/networking/v1"
+	// v1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	v1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +50,6 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			Namespace: "default",
 		}
 		canarydeployment := &appsv1alpha1.CanaryDeployment{}
-
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind CanaryDeployment")
 			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
@@ -58,19 +64,51 @@ var _ = Describe("CanaryDeployment Controller", func() {
 						Stable:  "v1",
 						Canary:  "v2",
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 1}},
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 1}},
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 2}},
+							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
+							{SetWeight: 20, Pause: appsv1alpha1.Pause{Seconds: 15}},
+							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 20}},
+							{SetWeight: 100},
 						},
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+
+				// resource_vs := &v1alpha3.VirtualService{
+				// 	ObjectMeta: metav1.ObjectMeta{
+				// 		Name:      "test-app",
+				// 		Namespace: "default",
+				// 	},
+				// 	Spec: istio.VirtualService{
+				// 		Hosts: []string{"test-app"},
+				// 		Http: []*istio.HTTPRoute{
+				// 			{
+				// 				Route: []*istio.HTTPRouteDestination{
+				// 					{
+				// 						Weight: 100,
+				// 						Destination: &istio.Destination{
+				// 							Host:   "test-app",
+				// 							Subset: "stable",
+				// 						},
+				// 					},
+				// 					{
+				// 						Weight: 0,
+				// 						Destination: &istio.Destination{
+				// 							Host:   "test-app",
+				// 							Subset: "canary",
+				// 						},
+				// 					},
+				// 				},
+				// 			},
+				// 		},
+				// 	},
+				// }
+				// Expect(k8sClient.Create(ctx, resource_vs)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
 			resource := &appsv1alpha1.CanaryDeployment{}
-			k8sClient.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: typeNamespacedName.Namespace}, resource)
+			// k8sClient.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: typeNamespacedName.Namespace}, resource)
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -85,12 +123,12 @@ var _ = Describe("CanaryDeployment Controller", func() {
 				Scheme: k8sClient.Scheme(),
 			}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
 		})
 
 		It("should requeue if the CanaryDeployment is not found", func() {
@@ -100,13 +138,14 @@ var _ = Describe("CanaryDeployment Controller", func() {
 				Scheme: k8sClient.Scheme(),
 			}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "non-existent-resource",
 					Namespace: "default",
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
 		It("should requeue if there is an error fetching the CanaryDeployment", func() {
@@ -117,32 +156,43 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			}
 
 			// Simulate an error by using an invalid namespace
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      resourceName,
 					Namespace: "invalid-namespace",
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
 		It("should handle update CanaryDeployment", func() {
-			By("Reconciling when update CanaryDeployment")
+			By("Reconciling when update step CanaryDeployment")
 			controllerReconciler := &CanaryDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
 			k8sClient.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: typeNamespacedName.Namespace}, canarydeployment)
 
-			canarydeployment.ActualStep = 2
-
-			Expect(k8sClient.Update(ctx, canarydeployment)).To(Succeed())
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			canary.SetActualStep(&k8sClient, canarydeployment)
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 
+			timeDuration := canary.GetRequeueTime(canarydeployment)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Duration(timeDuration) * time.Second, Requeue: false}))
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+
+			By("Validate time duration from pause step")
+			requeueTime := int64(canarydeployment.Spec.Steps[canarydeployment.ActualStep-1].Pause.Seconds)
+			timeDuration = canary.GetRequeueTime(canarydeployment)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(timeDuration).To(Equal(requeueTime))
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Duration(timeDuration) * time.Second}))
 		})
 
 		It("should update the VirtualService percentage", func() {
@@ -152,25 +202,55 @@ var _ = Describe("CanaryDeployment Controller", func() {
 				Scheme: k8sClient.Scheme(),
 			}
 
-			k8sClient.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: typeNamespacedName.Namespace}, canarydeployment)
-			Expect(canarydeployment).ToNot(BeNil())
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: typeNamespacedName.Namespace}, canarydeployment)
+			Expect(err).NotTo(HaveOccurred())
 
-			By("Validatate actual step to return equal total steps")
-			canarydeployment.ActualStep = 3
-			Expect(k8sClient.Update(ctx, canarydeployment)).To(Succeed())
-			canary.SetActualStep(&k8sClient, canarydeployment)
-			Expect(canarydeployment.ActualStep).To(Equal(int32(3)))
+			// totalSteps := int32(len(canarydeployment.Spec.Steps))
 
-			totalSteps := int32(len(canarydeployment.Spec.Steps))
+			setActualStep := int32(1)
+			canarydeployment.ActualStep = setActualStep
+			Expect(k8sClient.Update(ctx, canarydeployment)).Should(Succeed())
 
-			By("Validatate total steps + 1 to return equal total steps")
-			canarydeployment.ActualStep = totalSteps + 1
-			Expect(k8sClient.Update(ctx, canarydeployment)).To(Succeed())
+			_, err = canary.SetActualStep(&k8sClient, canarydeployment)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(canarydeployment.ActualStep).To(Equal(setActualStep + 1))
 
-			canary.SetActualStep(&k8sClient, canarydeployment)
-			Expect(canarydeployment.ActualStep).To(Equal(totalSteps))
+			resource_vs := &v1alpha3.VirtualService{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-app",
+					Namespace: "default",
+				},
+				Spec: networkingv1alpha3.VirtualService{
+					Hosts: []string{"test-app"},
+					Http: []*istio.HTTPRoute{
+						{
+							Route: []*networkingv1alpha3.HTTPRouteDestination{
+								{
+									Weight: 90,
+									Destination: &networkingv1alpha3.Destination{
+										Host:   "test-app",
+										Subset: "stable",
+									},
+								},
+								{
+									Weight: 10,
+									Destination: &networkingv1alpha3.Destination{
+										Host:   "test-app",
+										Subset: "canary",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, resource_vs)).To(Succeed())
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			// vs, _ := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, typeNamespacedName.Namespace)
+			// Expect(vs).ShouldNot(BeNil())
+			// resource_vs
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())

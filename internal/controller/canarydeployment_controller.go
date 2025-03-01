@@ -68,7 +68,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 
 		log.Custom.Info("Error fetching Canary Deployment")
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		return ctrl.Result{}, nil
 	}
 
 	appName := canaryDeployment.Spec.AppName
@@ -108,9 +108,6 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 		if canary.IsFullyPromoted(vs) {
 			log.Custom.Info("Canary deployment promoted (" + appName + ")")
-			// TODO
-			// Add function to move deploy canary to deploy stable
-			// and change vs > route > destination > weight = 100 when subset = stable
 			// _, err = canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
 			if err != nil {
 				return ctrl.Result{RequeueAfter: time.Second * 10}, nil

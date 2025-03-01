@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	appsv1alpha1 "github.com/oliveiraxavier/canary-crd/api/v1alpha1"
+	istioScheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -62,6 +63,9 @@ var _ = BeforeSuite(func() {
 	err = appsv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = istioScheme.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:scheme
 
 	By("bootstrapping test environment")
@@ -83,6 +87,7 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
 })
 
 var _ = AfterSuite(func() {
