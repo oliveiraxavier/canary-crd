@@ -183,7 +183,8 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			resource_vs := &istio.VirtualService{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-app",
+					Name:      "test-app",
+					Namespace: typeNamespacedName.Namespace,
 				},
 				Spec: istiov1alpha3.VirtualService{
 					Hosts: []string{"test-app"},
@@ -209,18 +210,24 @@ var _ = Describe("CanaryDeployment Controller", func() {
 					},
 				},
 			}
-			_, err = istioClient.NetworkingV1alpha3().VirtualServices("default").Create(ctx, resource_vs, metav1.CreateOptions{})
+			Expect(k8sClient.Create(ctx, resource_vs)).NotTo(HaveOccurred())
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
 			Expect(err).NotTo(HaveOccurred())
-			// Expect(istioVs).To(Succeed())
 
-			// vs, _ := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, typeNamespacedName.Namespace)
-			// Expect(vs).ShouldNot(BeNil())
-			// resource_vs
+			vs, _ := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, typeNamespacedName.Namespace)
+			Expect(vs).ShouldNot(BeNil())
+			stepToCompare := int32(0)
+			if canarydeployment.ActualStep > 0 {
+				stepToCompare = canarydeployment.ActualStep - 1
+			}
+			Expect(vs.Spec.Http[0].Route[1].Weight).To(Equal(canarydeployment.Spec.Steps[stepToCompare].SetWeight))
 
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
-			// Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should create a new CanaryDeployment if stable deployment exists", func() {
