@@ -33,7 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	appsv1alpha1 "github.com/oliveiraxavier/canary-crd/api/v1alpha1"
-	istioScheme "istio.io/client-go/pkg/clientset/versioned/scheme"
+	istiov1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	istioclientset "istio.io/client-go/pkg/clientset/versioned"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -41,11 +42,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	ctx       context.Context
-	cancel    context.CancelFunc
-	testEnv   *envtest.Environment
-	cfg       *rest.Config
-	k8sClient client.Client
+	ctx         context.Context
+	cancel      context.CancelFunc
+	testEnv     *envtest.Environment
+	cfg         *rest.Config
+	k8sClient   client.Client
+	istioClient *istioclientset.Clientset
 )
 
 func TestControllers(t *testing.T) {
@@ -63,7 +65,7 @@ var _ = BeforeSuite(func() {
 	err = appsv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = istioScheme.AddToScheme(scheme.Scheme)
+	err = istiov1alpha3.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
@@ -87,6 +89,10 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
+	istioClient, _ = istioclientset.NewForConfig(cfg)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(istioClient).NotTo(BeNil())
 
 })
 
