@@ -13,6 +13,7 @@ import (
 )
 
 func GetVirtualServiceForDeployment(clientSet *client.Client, appName string, namespace string) (*istio.VirtualService, error) {
+	//TODO add app name based in spec
 	virtualService := &istio.VirtualService{}
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: appName, Namespace: namespace}, virtualService)
 
