@@ -84,7 +84,7 @@ func NewStableDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 
 }
 
-func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment, namespace string, appName string) (*appsv1.Deployment, error) {
+func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment, namespace string, appName string) error {
 
 	deploymentCanary, err := GetCanaryDeployment(clientSet, appName, namespace)
 	if deploymentCanary != nil {
@@ -100,8 +100,7 @@ func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment 
 
 			_, err := NewStableDeployment(clientSet, newDeploymentStable, deployStableName, canaryDeployment.Spec.Canary)
 			if err != nil {
-				// NewCanaryDeployment(clientSet, stableDeployment, appName, canaryDeployment.Spec.Canary)
-				return nil, err
+				return err
 			}
 
 			log.Custom.Info("Success on change canary deployment to stable deployment")
@@ -109,17 +108,17 @@ func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment 
 				err = (*clientSet).Delete(context.Background(), canaryDeployment)
 				if err != nil {
 					log.Custom.Error(err, "Error on remove crd canary deployment ("+canaryDeployment.Spec.AppName+")")
-					return nil, err
+					return err
 				}
 
 				log.Custom.Info("Success on remove crd canarydeployment (" + canaryDeployment.Spec.AppName + ")")
-				return nil, nil
+				return nil
 			}
-			return nil, fmt.Errorf("%s", "Error deleting Deployment")
+			return fmt.Errorf("%s", "Error deleting Deployment")
 		}
 	}
 
-	return nil, err
+	return err
 }
 func deleteDeployment(clientSet *client.Client, deployment *appsv1.Deployment) bool {
 

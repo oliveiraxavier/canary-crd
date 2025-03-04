@@ -19,12 +19,12 @@ func GetVirtualServiceForDeployment(clientSet *client.Client, appName string, na
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			log.Custom.Info("Virtual Service not found. The manifest possible deleted.")
+			return nil, err
 		}
 		log.Custom.Error(err, "Err")
 		log.Custom.Info("Error fetching Virtual Service" + appName)
 		return nil, err
 	}
-
 	return virtualService, nil
 }
 
