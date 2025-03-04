@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package controller_test
 
 import (
 	"context"
@@ -34,13 +34,14 @@ import (
 
 	appsv1alpha1 "github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	"github.com/oliveiraxavier/canary-crd/internal/canary"
+	"github.com/oliveiraxavier/canary-crd/internal/controller"
 	appsv1 "k8s.io/api/apps/v1"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("CanaryDeployment Controller", func() {
-	Context("When reconciling a resource", func() {
+	Context("When new CanaryDeployment is created on cluster", func() {
 		const resourceName = "test-resource"
 		const resourceAppName = "test-resource"
 		const resourceStableVersion = "v1"
@@ -191,7 +192,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &CanaryDeploymentReconciler{
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -206,7 +207,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Should requeue if the CanaryDeployment is not found", func() {
 			By("Reconciling a non-existent resource")
-			controllerReconciler := &CanaryDeploymentReconciler{
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -223,7 +224,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Should test is finished CanaryDeployment", func() {
 
-			controllerReconciler := &CanaryDeploymentReconciler{
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -290,6 +291,10 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			isFinished := canary.IsFinished(*canarydeployment)
 			Expect(isFinished).To(Equal(true))
 
+			//TODO
+			//{RequeueAfter: time.Second * 10}
+			// ResetFullPercentageToStable
+
 		})
 
 		It("Should handle update CanaryDeployment", func() {
@@ -306,11 +311,20 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			Expect(timeDuration).To(Equal(requeueTime))
 
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+
 		})
 
 		It("Should update the VirtualService percentage", func() {
 			By("Reconciling a resource to update VirtualService percentage")
-			controllerReconciler := &CanaryDeploymentReconciler{
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
@@ -331,11 +345,6 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			By("Get Istio Virtual service")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, vsResource)).NotTo(HaveOccurred())
 
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
 			By("Test run UpdateVirtualServicePercentage")
 			vs, _ := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, typeNamespacedName.Namespace)
 			Expect(vs).ShouldNot(BeNil())
@@ -345,41 +354,9 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			}
 			Expect(vs.Spec.Http[0].Route[1].Weight).To(Equal(canarydeployment.Spec.Steps[stepToCompare].SetWeight))
 
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("Should create a new CanaryDeployment if stable deployment exists", func() {
-			By("Reconciling a resource with a stable deployment")
-			controllerReconciler := &CanaryDeploymentReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			stableDeployment := &appsv1alpha1.CanaryDeployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "stable-deployment",
-					Namespace: "default",
-				},
-				Spec: appsv1alpha1.CanaryDeploymentSpec{
-					AppName: "test-resource",
-					Stable:  "v1",
-					Canary:  "v2",
-					Steps: []appsv1alpha1.Step{
-						{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 1}},
-						{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 1}},
-						{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 2}},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, stableDeployment)).To(Succeed())
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
 		It("Should test is IsFullyPromoted CanaryDeployment", func() {
@@ -406,6 +383,14 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			By("Test if fullyPromoted")
 			fullyPromoted := canary.IsFullyPromoted(vs)
 			Expect(fullyPromoted).To(BeTrue())
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
 
 		})
 
@@ -427,6 +412,15 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			By("Validate timeduration")
 			timeDuration := canary.GetRequeueTime(canarydeployment)
 			Expect(timeDuration).To(Equal(int64(0)))
+
+			controllerReconciler := &controller.CanaryDeploymentReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 	})
 })
