@@ -11,7 +11,6 @@ import (
 func GetRequeueTime(canaryDeployment *v1alpha1.CanaryDeployment) int64 {
 	var requeueTime int64
 	var keyActualStep int32 = 0
-
 	totalSteps := int32(len(canaryDeployment.Spec.Steps))
 	if canaryDeployment.ActualStep >= totalSteps {
 		keyActualStep = totalSteps - 1
@@ -36,17 +35,15 @@ func GetRequeueTime(canaryDeployment *v1alpha1.CanaryDeployment) int64 {
 
 func SetActualStep(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment) (*v1alpha1.CanaryDeployment, error) {
 	originalCanary := canaryDeployment.DeepCopy()
-
 	totalSteps := int32(len(canaryDeployment.Spec.Steps))
+
 	if canaryDeployment.ActualStep > totalSteps-1 {
 		canaryDeployment.ActualStep = totalSteps
 		patchSelf(clientSet, originalCanary, canaryDeployment)
 		return canaryDeployment, nil
 	}
-
 	canaryDeployment.ActualStep = canaryDeployment.ActualStep + 1
 	patchSelf(clientSet, originalCanary, canaryDeployment)
-
 	return canaryDeployment, nil
 }
 

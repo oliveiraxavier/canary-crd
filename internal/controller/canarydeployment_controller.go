@@ -77,7 +77,6 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	stableVersion := canaryDeployment.Spec.Stable
 
 	if canary.IsFinished(canaryDeployment) {
-		log.Custom.Info("Canary Deployment exists")
 		_, err = canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
 
 		if err != nil {
@@ -109,9 +108,9 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		if canary.IsFullyPromoted(vs) {
 			log.Custom.Info("Canary deployment promoted (" + appName + ")")
 			// _, err = canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
-			if err != nil {
-				return ctrl.Result{RequeueAfter: time.Second * 10}, nil
-			}
+			// if err != nil {
+			// 	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			// }
 			// return ctrl.Result{}, nil
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
@@ -119,13 +118,13 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		timeDuration := canary.GetRequeueTime(&canaryDeployment)
 
 		if timeDuration == 0 {
-			return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
 
 		return ctrl.Result{RequeueAfter: time.Duration(timeDuration) * time.Second, Requeue: false}, nil
 	}
 
-	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

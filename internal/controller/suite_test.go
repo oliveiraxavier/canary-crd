@@ -34,7 +34,6 @@ import (
 
 	appsv1alpha1 "github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	istiov1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	istioclientset "istio.io/client-go/pkg/clientset/versioned"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -42,12 +41,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	ctx         context.Context
-	cancel      context.CancelFunc
-	testEnv     *envtest.Environment
-	cfg         *rest.Config
-	k8sClient   client.Client
-	istioClient *istioclientset.Clientset
+	ctx       context.Context
+	cancel    context.CancelFunc
+	testEnv   *envtest.Environment
+	cfg       *rest.Config
+	k8sClient client.Client
+	// istioClient *istioclientset.Clientset
 )
 
 func TestControllers(t *testing.T) {
@@ -90,9 +89,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	istioClient, _ = istioclientset.NewForConfig(cfg)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(istioClient).NotTo(BeNil())
+	// istioClient, _ = istioclientset.NewForConfig(cfg)
+	// Expect(err).NotTo(HaveOccurred())
+	// Expect(istioClient).NotTo(BeNil())
 
 })
 
@@ -124,4 +123,8 @@ func getFirstFoundEnvTestBinaryDir() string {
 		}
 	}
 	return ""
+}
+
+func int32Ptr(i int32) *int32 {
+	return &i
 }

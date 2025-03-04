@@ -59,6 +59,7 @@ func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 		}
 		return newCanaryDeployment, nil
 	}
+
 	return nil, nil
 }
 
