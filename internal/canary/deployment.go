@@ -18,7 +18,7 @@ func GetStableDeployment(clientSet *client.Client, deploymentName string, namesp
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: deploymentName, Namespace: namespace}, deployment)
 
 	if err != nil {
-		log.Custom.Info("Error fetching Stable Deployment for deployment " + deploymentName)
+		log.Custom.Error(err, "Error fetching Stable Deployment ", "deployment name", deploymentName)
 		return nil, err
 	}
 
@@ -30,7 +30,7 @@ func GetCanaryDeployment(clientSet *client.Client, deploymentName string, namesp
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: deploymentName + "-canary", Namespace: namespace}, deployment)
 
 	if err != nil {
-		log.Custom.Info("Error fetching Canary Deployment for deployment " + deploymentName + "-canary")
+		log.Custom.Error(err, "Error fetching Canary Deployment", "deployment name", deploymentName+"-canary")
 		return nil, err
 	}
 	return deployment, nil
@@ -54,10 +54,10 @@ func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 		err := (*clientSet).Create(context.Background(), newCanaryDeployment)
 
 		if err != nil {
-			log.Custom.Error(err, "Error on creation of Canary Deployment")
+			log.Custom.Error(err, "Error on creation of Canary Deployment", "deployment name", newCanaryDeployment.Name)
 			return nil, err
 		}
-		log.Custom.Error(err, "Error on creation of Canary Deployment")
+
 		return newCanaryDeployment, nil
 	}
 
@@ -76,10 +76,10 @@ func NewStableDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 	err := (*clientSet).Create(context.Background(), newStableDeployment)
 
 	if err != nil {
-		log.Custom.Error(err, "Error recreated Stable Deployment")
+		log.Custom.Error(err, "Error on try recreate Stable Deployment", "deployment name", newStableDeployment.Name)
 		return nil, err
 	}
-	log.Custom.Info("Successfully recreated Stable Deployment: " + appName)
+	log.Custom.Info("Successfully recreated Stable Deployment %s", appName)
 
 	return newStableDeployment, nil
 
@@ -104,18 +104,18 @@ func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment 
 				return err
 			}
 
-			log.Custom.Info("Success on change canary deployment to stable deployment")
+			log.Custom.Info("Success on change canary deployment %s to stable deployment %s", deploymentCanary.Name, deployStableName)
 			if deleteDeployment(clientSet, deploymentCanary) {
 				err = (*clientSet).Delete(context.Background(), canaryDeployment)
 				if err != nil {
-					log.Custom.Error(err, "Error on remove crd canary deployment ("+canaryDeployment.Spec.AppName+")")
+					log.Custom.Error(err, "Error on remove crd canary deployment", "canary deployment name", canaryDeployment.Spec.AppName)
 					return err
 				}
 
-				log.Custom.Info("Success on remove crd canarydeployment (" + canaryDeployment.Spec.AppName + ")")
+				log.Custom.Info("Success on remove crd canarydeployment %s", canaryDeployment.Spec.AppName)
 				return nil
 			}
-			return fmt.Errorf("%s", "Error deleting Deployment")
+			return fmt.Errorf("%s %s", "Error deleting Deployment", deploymentCanary.Name)
 		}
 	}
 

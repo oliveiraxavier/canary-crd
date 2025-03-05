@@ -1,9 +1,12 @@
 package logs
 
 import (
-	ctrl "sigs.k8s.io/controller-runtime"
+	"context"
+
+	defaultlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
-	Custom = ctrl.Log.WithName("")
+	ctx    context.Context
+	Custom = defaultlog.FromContext(ctx)
 )

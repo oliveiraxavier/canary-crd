@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	defaultlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/oliveiraxavier/canary-crd/api/v1alpha1"
@@ -55,8 +54,7 @@ type CanaryDeploymentReconciler struct {
 // +kubebuilder:rbac:groups=v1,resources=secrets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=v1,resources=secrets/finalizers,verbs=update
 func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = defaultlog.FromContext(ctx)
-
+	log.Custom.Info("Canary Deployment Started")
 	var canaryDeployment v1alpha1.CanaryDeployment
 
 	err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment)
