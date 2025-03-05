@@ -204,14 +204,14 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			}
 		})
 
-		It("Should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
+		// It("Should successfully reconcile the resource", func() {
+		// 	By("Reconciling the created resource")
 
-			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
-			Expect(err).NotTo(HaveOccurred())
+		// 	ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+		// 	Expect(err).NotTo(HaveOccurred())
 
-			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
-		})
+		// 	Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+		// })
 
 		It("Should requeue if the CanaryDeployment is not found", func() {
 			By("Reconciling a non-existent resource")

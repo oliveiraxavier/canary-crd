@@ -57,6 +57,7 @@ func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 			log.Custom.Error(err, "Error on creation of Canary Deployment")
 			return nil, err
 		}
+		log.Custom.Error(err, "Error on creation of Canary Deployment")
 		return newCanaryDeployment, nil
 	}
 
