@@ -46,7 +46,6 @@ var (
 	testEnv   *envtest.Environment
 	cfg       *rest.Config
 	k8sClient client.Client
-	// istioClient *istioclientset.Clientset
 )
 
 func TestControllers(t *testing.T) {
@@ -88,10 +87,6 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
-
-	// istioClient, _ = istioclientset.NewForConfig(cfg)
-	// Expect(err).NotTo(HaveOccurred())
-	// Expect(istioClient).NotTo(BeNil())
 
 })
 

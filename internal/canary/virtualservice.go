@@ -12,8 +12,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	stableText = "stable"
+	canaryText = "canary"
+)
+
 func GetVirtualServiceForDeployment(clientSet *client.Client, appName string, namespace string) (*istio.VirtualService, error) {
-	//TODO add app name based in spec
+	// TODO add app name based in spec
 	virtualService := &istio.VirtualService{}
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: appName, Namespace: namespace}, virtualService)
 
@@ -42,13 +47,13 @@ func GetWeightForVirtualService(clientSet *client.Client, vs *istio.VirtualServi
 			log.Custom.Info("Host: " + host)
 			log.Custom.Info("Subset: " + subset)
 
-			if subset == "stable" {
+			if subset == stableText {
 				stableWeight := route.Weight
 				stableWeightStr := fmt.Sprintf("Virtual Service %s stable, has weight: %d", vs.Name, stableWeight)
 				log.Custom.Info(stableWeightStr)
 			}
 
-			if subset == "canary" {
+			if subset == canaryText {
 				canaryWeight := route.Weight
 				canaryWeightStr := fmt.Sprintf("Virtual Service %s canary, has weight: %d", vs.Name, canaryWeight)
 				log.Custom.Info(canaryWeightStr)
@@ -69,7 +74,7 @@ func ReconfigureWeightVirtualService(clientSet *client.Client, vs *istio.Virtual
 		for j, route := range httpRoute.Route {
 			subset := route.Destination.Subset
 
-			if subset == "stable" {
+			if subset == stableText {
 				stableWeight := route.Weight
 				stableNewWeight := 100 - weightCanary
 				stableWeightStr := fmt.Sprintf("Virtual Service %s weight stable: %d", vs.Name, stableWeight)
@@ -79,7 +84,7 @@ func ReconfigureWeightVirtualService(clientSet *client.Client, vs *istio.Virtual
 				vs.Spec.Http[i].Route[j].Weight = stableNewWeight
 			}
 
-			if subset == "canary" {
+			if subset == canaryText {
 				canaryWeight := route.Weight
 				canaryWeightStr := fmt.Sprintf("Virtual Service %s weight canary: %d", vs.Name, canaryWeight)
 				canaryNewWeightStr := fmt.Sprintf("Virtual Service %s new weight canary after update: %d", vs.Name, weightCanary)
@@ -108,8 +113,8 @@ func UpdateVirtualServicePercentage(clientSet *client.Client, canaryDeployment *
 	vs, err := GetVirtualServiceForDeployment(clientSet, canaryDeployment.Spec.AppName, namespace)
 
 	if err == nil {
-		ReconfigureWeightVirtualService(clientSet, vs, canaryDeployment.Spec.Steps[canaryDeployment.ActualStep-1].SetWeight)
-		return vs, nil
+		_, err = ReconfigureWeightVirtualService(clientSet, vs, canaryDeployment.Spec.Steps[canaryDeployment.ActualStep-1].SetWeight)
+		return vs, err
 	}
 
 	return nil, err
@@ -120,7 +125,7 @@ func IsFullyPromoted(vs *istio.VirtualService) bool {
 	routesVs := vs.Spec.GetHttp()[0].Route
 	for k, destination := range routesVs {
 
-		if destination.Destination.Subset == "canary" {
+		if destination.Destination.Subset == canaryText {
 			if routesVs[k].Weight == 100 {
 				fullyPromoted = true
 			}

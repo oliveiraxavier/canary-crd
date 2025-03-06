@@ -54,7 +54,6 @@ type CanaryDeploymentReconciler struct {
 // +kubebuilder:rbac:groups=v1,resources=secrets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=v1,resources=secrets/finalizers,verbs=update
 func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log.Custom.Info("Canary Deployment Started")
 	var canaryDeployment v1alpha1.CanaryDeployment
 
 	err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment)
@@ -99,8 +98,8 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			log.Custom.Info("Stable version: " + stableVersion)
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
+		_, _ = canary.SetActualStep(&r.Client, &canaryDeployment)
 
-		canary.SetActualStep(&r.Client, &canaryDeployment)
 		vs, _ := canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeployment, namespace)
 
 		if canary.IsFullyPromoted(vs) {

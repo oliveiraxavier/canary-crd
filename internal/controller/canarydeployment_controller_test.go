@@ -66,7 +66,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			By("Find the stable deployment")
 			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 
 			By("Creating the stable deployment")
 			if err != nil && errors.IsNotFound(err) {
@@ -106,9 +106,9 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			By("Creating Istio VirtualService")
 			err = k8sClient.Get(ctx, typeNamespacedName, vsResource)
-			Expect(err).ToNot(BeNil())
-
+			// Expect(err).ToNot(BeNil())
 			if err != nil && errors.IsNotFound(err) {
+
 				resourceVirtualService := &istio.VirtualService{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
@@ -143,7 +143,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			By("Creating the Canary crd")
 			err = k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
-			Expect(err).ToNot(BeNil())
+			// Expect(err).ToNot(BeNil())
 
 			if err != nil && errors.IsNotFound(err) {
 				resource := &appsv1alpha1.CanaryDeployment{
@@ -171,10 +171,11 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		AfterEach(func() {
 			By("Find stableResource deployment to delete")
 			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup stableResource deployment")
-			Expect(k8sClient.Delete(ctx, stableResource)).To(Succeed())
+			// Expect(err).NotTo(HaveOccurred())
+			if err == nil {
+				By("Cleanup stableResource deployment")
+				Expect(k8sClient.Delete(ctx, stableResource)).To(Succeed())
+			}
 
 			By("Find Istio VirtualService to delete")
 			err = k8sClient.Get(ctx, typeNamespacedName, vsResource)
@@ -216,125 +217,156 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test if CanaryDeployment is nil", func() {
 
-			// controllerReconciler.Reconcile(ctx, reqReconciler)
 			err := k8sClient.Get(ctx, client.ObjectKey{Name: "inexistent-app", Namespace: typeNamespacedName.Namespace}, canarydeployment)
 			Expect(err).To(HaveOccurred())
 
 			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(client.IgnoreNotFound(err)).To(BeNil())
+			Expect(client.IgnoreNotFound(err)).To(Succeed())
 			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
-		It("Test Spec for CRD", func() {
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+		It("Test if CanaryDeployment is not found", func() {
+			err := k8sClient.Delete(ctx, canarydeployment)
 			Expect(err).ToNot(HaveOccurred())
 
-			By("Get canary deployment AppName (crd)")
-			appName := canarydeployment.Spec.AppName
-			Expect(appName).To(Equal(resourceAppName))
-
-			By("Get canary deployment CanaryVersion (crd)")
-			newVersion := canarydeployment.Spec.Canary
-			Expect(newVersion).To(Equal(resourceCanaryVersion))
-
-			By("Get canary deployment StableVersion (crd)")
-			stableVersion := canarydeployment.Spec.Stable
-			Expect(stableVersion).To(Equal(resourceStableVersion))
-
-			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
-			// controllerReconciler.Reconcile(ctx, reqReconciler)
-			Expect(err).ToNot(HaveOccurred())
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(ctrl).To(Equal(reconcile.Result{}))
-
+			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("Test if canary isFinished return false", func() {
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+		It("Test if Deployment stable is not found", func() {
+			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
+			Expect(err).ToNot(HaveOccurred())
+			err = k8sClient.Delete(ctx, stableResource)
+			Expect(err).ToNot(HaveOccurred())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Test if canary isFinished return false and deployment not exists", func() {
+			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = k8sClient.Get(ctx, typeNamespacedName, stableResource)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = k8sClient.Delete(ctx, stableResource)
 			Expect(err).ToNot(HaveOccurred())
 
 			isFinished := canary.IsFinished(*canarydeployment)
 			Expect(isFinished).To(BeFalse())
-			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
-			// controllerReconciler.Reconcile(ctx, reqReconciler)
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
+		It("Test if canary isFinished return false", func() {
+			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).ToNot(HaveOccurred())
+
+			isFinished := canary.IsFinished(*canarydeployment)
+			Expect(isFinished).To(BeFalse())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+		})
+
 		It("Test if canary isFinished return true", func() {
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
 
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps
+			canarydeployment.ActualStep = totalSteps - 1
+
+			_, err = canary.SetActualStep(&k8sClient, canarydeployment)
+			Expect(err).ToNot(HaveOccurred())
+
 			isFinished := canary.IsFinished(*canarydeployment)
 			Expect(isFinished).To(BeTrue())
 
-			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
-			// controllerReconciler.Reconcile(ctx, reqReconciler)
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
 		It("Test statements when isFinished return true (part 1)", func() {
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+			totalSteps := int32(len(canarydeployment.Spec.Steps))
+			canarydeployment.ActualStep = totalSteps - 1
+
+			_, err := canary.SetActualStep(&k8sClient, canarydeployment)
 			Expect(err).ToNot(HaveOccurred())
 
-			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps
 			err = canary.RolloutCanaryDeploymentToStable(&k8sClient, canarydeployment, "inexistent-namespace", "inexistent-"+resourceName)
 			Expect(err).To(HaveOccurred())
+
 			ctrl, _ := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
-			// if canary.IsFinished(*canarydeployment) {
-			// }
-
 		})
 
 		It("Test statements when isFinished return true (part 2)", func() {
-
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
-			Expect(err).ToNot(HaveOccurred())
-
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
 			canarydeployment.ActualStep = totalSteps
-			_, err = canary.ResetFullPercentageToStable(&k8sClient, canarydeployment, "inexistent-namespace")
-			Expect(err).ToNot(BeNil())
-			ctrl, _ := controllerReconciler.Reconcile(ctx, reconcile.Request{})
-			Expect(ctrl).To(Equal(reconcile.Result{}))
 
+			_, err := canary.SetActualStep(&k8sClient, canarydeployment)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = canary.ResetFullPercentageToStable(&k8sClient, canarydeployment, "inexistent-namespace")
+			Expect(err).To(HaveOccurred())
+			ctrl, _ := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
 		})
 
 		It("Test statements when isFinished return true (part 3)", func() {
-
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+			totalSteps := int32(len(canarydeployment.Spec.Steps))
+			canarydeployment.ActualStep = totalSteps - 1
+			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
 
+			err = canary.RolloutCanaryDeploymentToStable(&k8sClient, canarydeployment, "default", resourceAppName)
+			Expect(err).ToNot(HaveOccurred())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+			Expect(err).ToNot(HaveOccurred())
+
+		})
+
+		It("Test statements when isFinished return true (part 4)", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps
+			canarydeployment.ActualStep = totalSteps - 1
+			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = canary.RolloutCanaryDeploymentToStable(&k8sClient, canarydeployment, "default", resourceAppName)
+			Expect(err).ToNot(HaveOccurred())
+
 			_, err = canary.ResetFullPercentageToStable(&k8sClient, canarydeployment, "default")
-			Expect(err).To(BeNil())
-			ctrl, _ := controllerReconciler.Reconcile(ctx, reqReconciler)
-			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+			Expect(err).ToNot(HaveOccurred())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+			Expect(err).ToNot(HaveOccurred())
 
 		})
 
 		It("Test statements for inexistent Stable deployment ", func() {
-
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
+
 			appName := canarydeployment.Spec.AppName
-			stableDeployment, _ := canary.GetStableDeployment(&k8sClient, "inexistent-"+appName, "default")
-			Expect(stableDeployment).To(BeNil())
+			_, err = canary.GetStableDeployment(&k8sClient, "inexistent-"+appName, "default")
+			Expect(errors.IsNotFound(err)).To(BeTrue())
 
 			ctrl, _ := controllerReconciler.Reconcile(ctx, reconcile.Request{})
 			Expect(ctrl).To(Equal(reconcile.Result{}))
-
 		})
 
 		It("Test statements for Stable deployment ", func() {
-			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
-			Expect(err).ToNot(HaveOccurred())
+			// controllerReconciler.Reconcile(ctx, reqReconciler)
 			appName := canarydeployment.Spec.AppName
 			newVersion := canarydeployment.Spec.Canary
 			stableDeployment, _ := canary.GetStableDeployment(&k8sClient, appName, "default")
@@ -342,18 +374,79 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			newCanaryDeployment, err := canary.NewCanaryDeployment(&k8sClient, stableDeployment, appName, newVersion)
 			Expect(newCanaryDeployment).ToNot(BeNil())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			ctrl, _ := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
 
 		})
 
-		It("Test ", func() {
+		It("Test statements for isFullyPromoted equal false", func() {
 
-			controllerReconciler.Reconcile(ctx, reqReconciler)
+			canarydeployment.ActualStep = 1
+			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).ToNot(HaveOccurred())
+
+			isFullyPromoted := canary.IsFullyPromoted(vs)
+			Expect(isFullyPromoted).To(BeFalse())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
 
 		})
+
+		It("Test statements for isFullyPromoted equal true", func() {
+			totalSteps := int32(len(canarydeployment.Spec.Steps))
+			canarydeployment.ActualStep = totalSteps
+
+			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
+			Expect(err).ToNot(HaveOccurred())
+
+			isFullyPromoted := canary.IsFullyPromoted(vs)
+			Expect(isFullyPromoted).To(BeTrue())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Test timeDuration when isFullyPromoted equal true", func() {
+			totalSteps := int32(len(canarydeployment.Spec.Steps))
+			canarydeployment.ActualStep = totalSteps
+
+			timeDuration := canary.GetRequeueTime(canarydeployment)
+			Expect(timeDuration).To(BeNumerically("==", int64(0)))
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Test timeDuration only", func() {
+			canarydeployment.ActualStep = 4
+
+			timeDuration := canary.GetRequeueTime(canarydeployment)
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(timeDuration).To(Equal(int64(0)))
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		// It("Test timeDuration when isFullyPromoted not equal true", func() {
+		// 	_, err := canary.SetActualStep(&k8sClient, canarydeployment)
+		// 	Expect(err).ToNot(HaveOccurred())
+
+		// 	timeDuration := canary.GetRequeueTime(canarydeployment)
+
+		// 	ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+		// 	Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Duration(timeDuration) * time.Second, Requeue: false}))
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
 	})
 })

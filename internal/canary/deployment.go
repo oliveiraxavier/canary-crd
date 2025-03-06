@@ -36,14 +36,14 @@ func GetCanaryDeployment(clientSet *client.Client, deploymentName string, namesp
 	return deployment, nil
 }
 
-func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment, appName string, deploymentCanary string) (*appsv1.Deployment, error) {
+func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment, appName string, deploymentCanaryVersion string) (*appsv1.Deployment, error) {
 	newCanaryDeployment := deployment.DeepCopy()
 
 	canaryLabel := map[string]string{"run-type": "canary", "app": appName}
 	newCanaryDeployment.Spec.Selector.MatchLabels = canaryLabel
 	newCanaryDeployment.Spec.Template.ObjectMeta.Labels = canaryLabel
 	imageName := strings.Split(newCanaryDeployment.Spec.Template.Spec.Containers[0].Image, ":")
-	newCanaryDeployment.Spec.Template.Spec.Containers[0].Image = imageName[0] + ":" + deploymentCanary
+	newCanaryDeployment.Spec.Template.Spec.Containers[0].Image = imageName[0] + ":" + deploymentCanaryVersion
 
 	deploymentCanaryExists, _ := GetCanaryDeployment(clientSet, appName, newCanaryDeployment.Namespace)
 
@@ -79,7 +79,7 @@ func NewStableDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 		log.Custom.Error(err, "Error on try recreate Stable Deployment", "deployment name", newStableDeployment.Name)
 		return nil, err
 	}
-	log.Custom.Info("Successfully recreated Stable Deployment %s", appName)
+	log.Custom.Info("Successfully recreated Stable Deployment", "stable deployment", appName)
 
 	return newStableDeployment, nil
 
@@ -104,7 +104,7 @@ func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment 
 				return err
 			}
 
-			log.Custom.Info("Success on change canary deployment %s to stable deployment %s", deploymentCanary.Name, deployStableName)
+			log.Custom.Info("Success on change canary deployment to stable deployment", "stable deployment", deployStableName)
 			if deleteDeployment(clientSet, deploymentCanary) {
 				err = (*clientSet).Delete(context.Background(), canaryDeployment)
 				if err != nil {
@@ -112,7 +112,7 @@ func RolloutCanaryDeploymentToStable(clientSet *client.Client, canaryDeployment 
 					return err
 				}
 
-				log.Custom.Info("Success on remove crd canarydeployment %s", canaryDeployment.Spec.AppName)
+				log.Custom.Info("Success on remove crd canary deployment", "canary deployment name", canaryDeployment.Spec.AppName)
 				return nil
 			}
 			return fmt.Errorf("%s %s", "Error deleting Deployment", deploymentCanary.Name)
@@ -129,6 +129,6 @@ func deleteDeployment(clientSet *client.Client, deployment *appsv1.Deployment) b
 		return false
 	}
 
-	log.Custom.Info("Successfully deleted Deployment: " + deployment.Name)
+	log.Custom.Info("Successfully deleted Deployment", "deployment name", deployment.Name)
 	return true
 }

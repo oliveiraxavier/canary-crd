@@ -1,0 +1,168 @@
+package canary_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/oliveiraxavier/canary-crd/api/v1alpha1"
+	"github.com/oliveiraxavier/canary-crd/internal/canary"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+type mockClient struct {
+	client.Client
+	getErr    error
+	createErr error
+	deleteErr error
+}
+
+func int32Ptr(i int32) *int32 {
+	return &i
+}
+func TestControllers(t *testing.T) {
+	RegisterFailHandler(Fail)
+
+	RunSpecs(t, "Controller Suite")
+}
+
+func (m *mockClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+	if m.getErr != nil {
+		return m.getErr
+	}
+	return m.Client.Get(ctx, key, obj)
+}
+
+func (m *mockClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if m.createErr != nil {
+		return m.createErr
+	}
+	return m.Client.Create(ctx, obj, opts...)
+}
+
+func (m *mockClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	if m.deleteErr != nil {
+		return m.deleteErr
+	}
+	return m.Client.Delete(ctx, obj, opts...)
+}
+
+var _ = Describe("Test deployment", func() {
+	var (
+		clientSet             client.Client
+		mocked                *mockClient
+		defaultDeploymentName = "myapp"
+
+		deployLabels = map[string]string{
+			"run-type": "stable",
+			"app":      defaultDeploymentName,
+		}
+
+		deploymentStable = &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: defaultDeploymentName, Namespace: "default"},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: int32Ptr(1),
+				Selector: &metav1.LabelSelector{
+					MatchLabels: deployLabels,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: deployLabels,
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  defaultDeploymentName,
+								Image: defaultDeploymentName + ":1.1",
+							},
+						},
+					},
+				},
+			},
+		}
+	)
+
+	BeforeEach(func() {
+		scheme := runtime.NewScheme()
+		_ = appsv1.AddToScheme(scheme)
+		_ = v1alpha1.AddToScheme(scheme)
+		clientSet = fake.NewClientBuilder().WithScheme(scheme).Build()
+		mocked = &mockClient{Client: clientSet}
+	})
+
+	Context("GetStableDeployment", func() {
+		It("should return an existing stable deployment", func() {
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: defaultDeploymentName, Namespace: "default"},
+			}
+			Expect(clientSet.Create(context.Background(), deployment)).To(Succeed())
+
+			result, err := canary.GetStableDeployment(&mocked.Client, defaultDeploymentName, "default")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).ToNot(BeNil())
+		})
+
+		It("should return an error when deployment is not found", func() {
+			mocked.getErr = errors.New("not found")
+			result, err := canary.GetStableDeployment(&mocked.Client, "missing", "default")
+			Expect(err).To(HaveOccurred())
+			Expect(result).To(BeNil())
+		})
+	})
+
+	Context("NewCanaryDeployment", func() {
+		It("should create a new canary deployment", func() {
+
+			Expect(clientSet.Create(context.Background(), deploymentStable)).To(Succeed())
+
+			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deploymentStable, defaultDeploymentName, "1.1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newDeployment).ToNot(BeNil())
+			Expect(newDeployment.Name).To(Equal(defaultDeploymentName + "-canary"))
+		})
+
+		It("should return nil if deployment canary already exists", func() {
+			canaryDeployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: defaultDeploymentName + "-canary", Namespace: "default"},
+			}
+			Expect(clientSet.Create(context.Background(), canaryDeployment)).To(Succeed())
+
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: defaultDeploymentName + "v2-canary", Namespace: "default"},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: int32Ptr(1),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: deployLabels,
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: deployLabels,
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  defaultDeploymentName + "v2-canary",
+									Image: "myapp:1.1",
+								},
+							},
+						},
+					},
+				},
+			}
+			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deployment, defaultDeploymentName, "1.2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newDeployment).To(BeNil())
+			// Expect(newDeployment.Name).To(Equal(canaryDeployment.Name))
+		})
+	})
+})

@@ -31,7 +31,7 @@ type CanaryDeploymentSpec struct {
 	// +kubebuilder:validation:MinLength=1
 	Canary string `json:"canary"`
 
-	//TODO
+	// TODO
 	// VsName string `json:"vsName,omitempty"`
 	// ConfigMapName string `json:"configMapName,omitempty"`
 	// SecretName string `json:"secretName,omitempty"`

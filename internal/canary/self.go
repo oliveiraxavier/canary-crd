@@ -39,14 +39,15 @@ func SetActualStep(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDe
 
 	if canaryDeployment.ActualStep > totalSteps-1 {
 		canaryDeployment.ActualStep = totalSteps
-		patchSelf(clientSet, originalCanary, canaryDeployment)
-		return canaryDeployment, nil
+		_, err := patchSelf(clientSet, originalCanary, canaryDeployment)
+		return canaryDeployment, err
 	}
 	canaryDeployment.ActualStep = canaryDeployment.ActualStep + 1
-	patchSelf(clientSet, originalCanary, canaryDeployment)
-	return canaryDeployment, nil
+	_, err := patchSelf(clientSet, originalCanary, canaryDeployment)
+	return canaryDeployment, err
 }
 
+//nolint:unparam
 func patchSelf(clientSet *client.Client, originalCanary *v1alpha1.CanaryDeployment, canaryDeployment *v1alpha1.CanaryDeployment) (*v1alpha1.CanaryDeployment, error) {
 
 	err := (*clientSet).Patch(context.Background(), canaryDeployment, client.MergeFrom(originalCanary))
