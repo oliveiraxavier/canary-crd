@@ -114,9 +114,29 @@ var _ = Describe("Test deployment", func() {
 
 		It("should return an error when deployment is not found", func() {
 			mocked.getErr = errors.New("not found")
-			result, err := canary.GetStableDeployment(&mocked.Client, "missing", "default")
+			stableDeploymentResult, err := canary.GetStableDeployment(&mocked.Client, "inexistent", "default")
 			Expect(err).To(HaveOccurred())
-			Expect(result).To(BeNil())
+			Expect(stableDeploymentResult).To(BeNil())
+		})
+	})
+
+	Context("GetCanaryDeployment", func() {
+		It("should return an existing canary deployment", func() {
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: defaultDeploymentName + "-canary", Namespace: "default"},
+			}
+			Expect(clientSet.Create(context.Background(), deployment)).To(Succeed())
+
+			result, err := canary.GetCanaryDeployment(&mocked.Client, defaultDeploymentName, "default")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).ToNot(BeNil())
+		})
+
+		It("should return an error when canary deployment is not found", func() {
+			mocked.getErr = errors.New("not found")
+			canaryDeploymentResult, err := canary.GetCanaryDeployment(&mocked.Client, "inexistent", "default")
+			Expect(err).To(HaveOccurred())
+			Expect(canaryDeploymentResult).To(BeNil())
 		})
 	})
 
@@ -162,7 +182,6 @@ var _ = Describe("Test deployment", func() {
 			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deployment, defaultDeploymentName, "1.2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newDeployment).To(BeNil())
-			// Expect(newDeployment.Name).To(Equal(canaryDeployment.Name))
 		})
 	})
 })
