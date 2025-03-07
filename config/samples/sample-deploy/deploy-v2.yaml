@@ -1,3 +1,4 @@
+# Example without new configmaps and secrets
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,7 +57,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: nginx-new
+  name: nginx-new-vs
 spec:
   hosts:
   - nginx-new

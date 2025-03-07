@@ -15,8 +15,10 @@ import (
 	"github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	"github.com/oliveiraxavier/canary-crd/internal/canary"
 
+	appsv1alpha1 "github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -59,8 +61,12 @@ func (m *mockClient) Delete(ctx context.Context, obj client.Object, opts ...clie
 
 var _ = Describe("Test deployment", func() {
 	var (
-		clientSet             client.Client
-		mocked                *mockClient
+		clientSet client.Client
+		mocked    *mockClient
+		scheme    = runtime.NewScheme()
+		_         = appsv1.AddToScheme(scheme)
+		_         = v1alpha1.AddToScheme(scheme)
+
 		defaultDeploymentName = "myapp"
 
 		deployLabels = map[string]string{
@@ -90,14 +96,39 @@ var _ = Describe("Test deployment", func() {
 				},
 			},
 		}
+
+		typeNamespacedName = types.NamespacedName{
+			Name:      deploymentStable.Name,
+			Namespace: "default",
+		}
+		canaryDeploymentCrd = &appsv1alpha1.CanaryDeployment{}
 	)
 
 	BeforeEach(func() {
-		scheme := runtime.NewScheme()
-		_ = appsv1.AddToScheme(scheme)
-		_ = v1alpha1.AddToScheme(scheme)
 		clientSet = fake.NewClientBuilder().WithScheme(scheme).Build()
 		mocked = &mockClient{Client: clientSet}
+		err := clientSet.Get(context.Background(), typeNamespacedName, canaryDeploymentCrd)
+		Expect(err).ToNot(BeNil())
+
+		canaryDeploymentCrd = &appsv1alpha1.CanaryDeployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      defaultDeploymentName,
+				Namespace: "default",
+			},
+			Spec: appsv1alpha1.CanaryDeploymentSpec{
+				AppName:                 deploymentStable.Name,
+				Stable:                  "1.1",
+				Canary:                  "1.2",
+				IstioVirtualServiceName: "fake-vs",
+				Steps: []appsv1alpha1.Step{
+					{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
+					{SetWeight: 20, Pause: appsv1alpha1.Pause{Seconds: 15}},
+					{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 20}},
+					{SetWeight: 100},
+				},
+			},
+		}
+		Expect(clientSet.Create(context.Background(), canaryDeploymentCrd)).To(Succeed())
 	})
 
 	Context("GetStableDeployment", func() {
@@ -141,11 +172,14 @@ var _ = Describe("Test deployment", func() {
 	})
 
 	Context("NewCanaryDeployment", func() {
+
+		// if err != nil && !cluster_errors.IsNotFound(err) {
+		// }
 		It("should create a new canary deployment", func() {
 
 			Expect(clientSet.Create(context.Background(), deploymentStable)).To(Succeed())
 
-			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deploymentStable, defaultDeploymentName, "1.1")
+			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deploymentStable, canaryDeploymentCrd)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newDeployment).ToNot(BeNil())
 			Expect(newDeployment.Name).To(Equal(defaultDeploymentName + "-canary"))
@@ -179,7 +213,7 @@ var _ = Describe("Test deployment", func() {
 					},
 				},
 			}
-			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deployment, defaultDeploymentName, "1.2")
+			newDeployment, err := canary.NewCanaryDeployment(&mocked.Client, deployment, canaryDeploymentCrd)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newDeployment).To(BeNil())
 		})

@@ -36,7 +36,9 @@ func GetCanaryDeployment(clientSet *client.Client, deploymentName string, namesp
 	return deployment, nil
 }
 
-func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment, appName string, deploymentCanaryVersion string) (*appsv1.Deployment, error) {
+func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment, canaryDeploymentCrd *v1alpha1.CanaryDeployment) (*appsv1.Deployment, error) {
+	appName := canaryDeploymentCrd.Spec.AppName
+	deploymentCanaryVersion := canaryDeploymentCrd.Spec.Canary
 	newCanaryDeployment := deployment.DeepCopy()
 
 	canaryLabel := map[string]string{"run-type": "canary", "app": appName}
@@ -44,6 +46,8 @@ func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 	newCanaryDeployment.Spec.Template.ObjectMeta.Labels = canaryLabel
 	imageName := strings.Split(newCanaryDeployment.Spec.Template.Spec.Containers[0].Image, ":")
 	newCanaryDeployment.Spec.Template.Spec.Containers[0].Image = imageName[0] + ":" + deploymentCanaryVersion
+
+	VerifyToAddEnvFrom(canaryDeploymentCrd, newCanaryDeployment)
 
 	deploymentCanaryExists, _ := GetCanaryDeployment(clientSet, appName, newCanaryDeployment.Namespace)
 
@@ -58,6 +62,9 @@ func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 			return nil, err
 		}
 
+		log.Custom.Info("Canary Deployment created", "app", appName)
+		log.Custom.Info("Canary Deployment stable version", "version", canaryDeploymentCrd.Spec.Stable)
+		log.Custom.Info("Canary Deployment new version", "version", deploymentCanaryVersion)
 		return newCanaryDeployment, nil
 	}
 

@@ -58,6 +58,19 @@ spec:
               canary:
                 minLength: 1
                 type: string
+              configMapNames:
+                items:
+                  minLength: 1
+                  type: string
+                type: array
+              istioVirtualServiceName:
+                minLength: 1
+                type: string
+              secretNames:
+                items:
+                  minLength: 1
+                  type: string
+                type: array
               stable:
                 minLength: 1
                 type: string
@@ -88,6 +101,7 @@ spec:
             required:
             - appName
             - canary
+            - istioVirtualServiceName
             - stable
             - steps
             type: object
@@ -105,7 +119,7 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
-  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  name: canary-deployment-controller-manager-c-mng
   namespace: test-canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -325,7 +339,7 @@ roleRef:
   name: canary-deployment-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  name: canary-deployment-controller-manager-c-mng
   namespace: test-canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -341,7 +355,7 @@ roleRef:
   name: canary-deployment-manager-role
 subjects:
 - kind: ServiceAccount
-  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  name: canary-deployment-controller-manager-c-mng
   namespace: test-canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -354,7 +368,7 @@ roleRef:
   name: canary-deployment-metrics-auth-role
 subjects:
 - kind: ServiceAccount
-  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  name: canary-deployment-controller-manager-c-mng
   namespace: test-canary-deployment
 ---
 apiVersion: v1
@@ -364,7 +378,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
-  name: canary-deployment-canary-deployment-controller-mng-metrics-svc
+  name: canary-deployment-controller-mng-metrics-svc
   namespace: test-canary-deployment
 spec:
   ports:
@@ -438,6 +452,6 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      serviceAccountName: controller-manager
+      serviceAccountName: canary-deployment-controller-manager-c-mng
       terminationGracePeriodSeconds: 10
       volumes: []
