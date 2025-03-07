@@ -17,18 +17,22 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type CanaryDeploymentSpec struct {
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:required
 	AppName string `json:"appName"`
 
 	// +kubebuilder:validation:MinLength=1
-
+	// +kubebuilder:validation:required
 	Stable string `json:"stable"`
 
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:required
 	Canary string `json:"canary"`
 
 	// TODO
@@ -39,7 +43,7 @@ type CanaryDeploymentSpec struct {
 	// +kubebuilder:validation:listType=map
 	// +kubebuilder:validation:uniqueItems=true
 	// +kubebuilder:validation:items={"$ref":"#/definitions/Step"}
-	// +kubebuilder:validation:default=[{"setWeight":20,"pause":[{"minutes":120}]}]
+	// +kubebuilder:validation:default=[{"setWeight":10,"pause":[{"minutes":60}]}]
 	// +kubebuilder:validation:required
 	Steps []Step `json:"steps"`
 }
@@ -65,8 +69,9 @@ type CanaryDeployment struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:default=0
-	ActualStep int32                `json:"actualStep,omitempty"`
-	Spec       CanaryDeploymentSpec `json:"spec,omitempty"`
+	CurrentStep int32                `json:"CurrentStep,omitempty"`
+	SyncAfter   string               `json:"syncAfter,omitempty"`
+	Spec        CanaryDeploymentSpec `json:"spec"`
 }
 
 // +kubebuilder:object:root=true
@@ -79,4 +84,12 @@ type CanaryDeploymentList struct {
 
 func init() {
 	SchemeBuilder.Register(&CanaryDeployment{}, &CanaryDeploymentList{})
+}
+
+// Validate checks if the Stable and Canary fields have the same value
+func (c *CanaryDeploymentSpec) Validate() error {
+	if c.Stable == c.Canary {
+		return errors.New("stable and Canary fields cannot have the same value")
+	}
+	return nil
 }

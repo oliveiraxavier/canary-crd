@@ -126,7 +126,7 @@ metadata:
   namespace: default
   resourceVersion: "224103"
   uid: a15fcc18-c5cc-44b6-b829-9a1301784e9c
-actualStep: 0
+CurrentStep: 0
 spec:
   appName: nginx-new
   canary: 1.27-alpine

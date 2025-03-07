@@ -280,9 +280,9 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps - 1
+			canarydeployment.CurrentStep = totalSteps - 1
 
-			_, err = canary.SetActualStep(&k8sClient, canarydeployment)
+			_, err = canary.SetCurrentStep(&k8sClient, canarydeployment)
 			Expect(err).ToNot(HaveOccurred())
 
 			isFinished := canary.IsFinished(*canarydeployment)
@@ -295,9 +295,9 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements when isFinished return true (part 1)", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps - 1
+			canarydeployment.CurrentStep = totalSteps - 1
 
-			_, err := canary.SetActualStep(&k8sClient, canarydeployment)
+			_, err := canary.SetCurrentStep(&k8sClient, canarydeployment)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = canary.RolloutCanaryDeploymentToStable(&k8sClient, canarydeployment, "inexistent-namespace", "inexistent-"+resourceName)
@@ -309,9 +309,9 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements when isFinished return true (part 2)", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps
+			canarydeployment.CurrentStep = totalSteps
 
-			_, err := canary.SetActualStep(&k8sClient, canarydeployment)
+			_, err := canary.SetCurrentStep(&k8sClient, canarydeployment)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = canary.ResetFullPercentageToStable(&k8sClient, canarydeployment, "inexistent-namespace")
@@ -322,7 +322,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements when isFinished return true (part 3)", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps - 1
+			canarydeployment.CurrentStep = totalSteps - 1
 			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -337,7 +337,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements when isFinished return true (part 4)", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps - 1
+			canarydeployment.CurrentStep = totalSteps - 1
 			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -383,7 +383,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements for isFullyPromoted equal false", func() {
 
-			canarydeployment.ActualStep = 1
+			canarydeployment.CurrentStep = 1
 			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -401,7 +401,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements for isFullyPromoted equal true", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps
+			canarydeployment.CurrentStep = totalSteps
 
 			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
 			Expect(err).ToNot(HaveOccurred())
@@ -416,7 +416,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test timeDuration when isFullyPromoted equal true", func() {
 			totalSteps := int32(len(canarydeployment.Spec.Steps))
-			canarydeployment.ActualStep = totalSteps
+			canarydeployment.CurrentStep = totalSteps
 
 			timeDuration := canary.GetRequeueTime(canarydeployment)
 			Expect(timeDuration).To(BeNumerically("==", int64(0)))
@@ -428,7 +428,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		})
 
 		It("Test timeDuration only", func() {
-			canarydeployment.ActualStep = 4
+			canarydeployment.CurrentStep = 4
 
 			timeDuration := canary.GetRequeueTime(canarydeployment)
 			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
@@ -438,7 +438,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		})
 
 		// It("Test timeDuration when isFullyPromoted not equal true", func() {
-		// 	_, err := canary.SetActualStep(&k8sClient, canarydeployment)
+		// 	_, err := canary.SetCurrentStep(&k8sClient, canarydeployment)
 		// 	Expect(err).ToNot(HaveOccurred())
 
 		// 	timeDuration := canary.GetRequeueTime(canarydeployment)

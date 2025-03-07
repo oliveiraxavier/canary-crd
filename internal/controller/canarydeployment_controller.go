@@ -30,6 +30,7 @@ import (
 	"github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	"github.com/oliveiraxavier/canary-crd/internal/canary"
 	log "github.com/oliveiraxavier/canary-crd/internal/logs"
+	"github.com/oliveiraxavier/canary-crd/internal/utils"
 )
 
 // CanaryDeploymentReconciler reconciles a CanaryDeployment object
@@ -56,16 +57,11 @@ type CanaryDeploymentReconciler struct {
 func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var canaryDeployment v1alpha1.CanaryDeployment
 
-	err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment)
+	if err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment); err != nil {
 
-	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			log.Custom.Info("Canary Deployment not found. The manifest possible deleted.")
-			return ctrl.Result{}, nil
-		}
-
-		log.Custom.Info("Error fetching Canary Deployment")
-		return ctrl.Result{}, nil
+		err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment)
+		log.Custom.Info("Canary Deployment not found, the manifest possible deleted after fully upgrade.")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	appName := canaryDeployment.Spec.AppName
@@ -73,13 +69,18 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	newVersion := canaryDeployment.Spec.Canary
 	stableVersion := canaryDeployment.Spec.Stable
 
+	if stableVersion == newVersion {
+		result, err := FinalizeReconcile(&r.Client, &canaryDeployment)
+		return result, err
+	}
+
 	if canary.IsFinished(canaryDeployment) {
-		err = canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
+		err := canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeployment, namespace, appName)
 
 		if err != nil {
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
-		_, err := canary.ResetFullPercentageToStable(&r.Client, &canaryDeployment, namespace)
+		_, err = canary.ResetFullPercentageToStable(&r.Client, &canaryDeployment, namespace)
 		if err != nil {
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
@@ -89,6 +90,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	stableDeployment, _ := canary.GetStableDeployment(&r.Client, appName, namespace)
 
 	if stableDeployment != nil {
+
 		newCanaryDeployment, err := canary.NewCanaryDeployment(&r.Client, stableDeployment, appName, newVersion)
 
 		if newCanaryDeployment != nil && err == nil {
@@ -96,14 +98,30 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			log.Custom.Info("App Name: " + appName)
 			log.Custom.Info("New version: " + newVersion)
 			log.Custom.Info("Stable version: " + stableVersion)
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			// _, err = canary.SetSyncDate(&r.Client, &canaryDeployment)
+			// if err != nil {
+			// 	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			// }
+			// return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
-		_, _ = canary.SetActualStep(&r.Client, &canaryDeployment)
 
+		//Prevent lose current step when restart pod
+		if !utils.NowIsAfterOrEqualCompareDate(canaryDeployment.SyncAfter) {
+			log.Custom.Info("Next step is after", "date", canaryDeployment.SyncAfter)
+			timeRemaing := utils.GetTimeRemaining(canaryDeployment.SyncAfter)
+			log.Custom.Info("Time remaining is", "time", timeRemaing)
+			if timeRemaing > 0 {
+				return ctrl.Result{RequeueAfter: time.Duration(timeRemaing)}, nil
+			}
+
+		}
+		_, _ = canary.SetCurrentStep(&r.Client, &canaryDeployment)
+		//Set next sync datetime to prevent lose current step when restart pod
+		_, _ = canary.SetSyncDate(&r.Client, &canaryDeployment)
 		vs, _ := canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeployment, namespace)
 
 		if canary.IsFullyPromoted(vs) {
-			log.Custom.Info("Canary deployment promoted (" + appName + ")")
+			log.Custom.Info("Canary deployment promoted", "app", appName)
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
 
@@ -113,14 +131,29 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
 
-		return ctrl.Result{RequeueAfter: time.Duration(timeDuration) * time.Second, Requeue: false}, nil
+		return ctrl.Result{RequeueAfter: time.Duration(timeDuration) * time.Second}, nil
 	}
 
-	return ctrl.Result{}, nil
+	result, err := FinalizeReconcile(&r.Client, &canaryDeployment)
+	return result, err
+}
+
+func FinalizeReconcile(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment) (ctrl.Result, error) {
+	appName := canaryDeployment.Spec.AppName
+	name := canaryDeployment.Name
+	log.Custom.Info("The stable version must be different from the canary version", "stable version", canaryDeployment.Spec.Stable, "canary version", canaryDeployment.Spec.Canary)
+	log.Custom.Info("Stop canary deployment", "name", name)
+	err := canary.DeleteCanaryDeployment(clientSet, canaryDeployment)
+	if err == nil {
+		log.Custom.Info("Stop canary deployment", "name", name)
+		log.Custom.Info("Canary deployment deleted. Fix manifest canary version and apply/try again", "name", name, "app", appName)
+	}
+	return ctrl.Result{}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CanaryDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.CanaryDeployment{}).
 		WithEventFilter(predicate.Funcs{

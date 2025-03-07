@@ -10,11 +10,11 @@ spec:
   canary: "1.27-alpine"
   steps:
   - setWeight: 10
-    pause: {seconds: 140}
+    pause: {seconds: 60}
   - setWeight: 20
-    pause: {seconds: 240}
+    pause: {seconds: 60}
   - setWeight: 45
-    pause: {seconds: 90}
+    pause: {seconds: 60}
   - setWeight: 70
     pause: {minutes: 2}
   - setWeight: 100
@@ -34,9 +34,9 @@ spec:
     pause: {seconds: 120}
   - setWeight: 20
     pause: {seconds: 90}
-  - setWeight: 45
+  - setWeight: 55
     pause: {seconds: 240}
-  - setWeight: 75
+  - setWeight: 82
     pause: {seconds: 90}
   - setWeight: 89
     pause: {minutes: 5}

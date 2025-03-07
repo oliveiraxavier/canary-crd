@@ -6,9 +6,7 @@ import (
 
 	"github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	log "github.com/oliveiraxavier/canary-crd/internal/logs"
-
 	istio "istio.io/client-go/pkg/apis/networking/v1alpha3"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -24,11 +22,11 @@ func GetVirtualServiceForDeployment(clientSet *client.Client, appName string, na
 
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
-			log.Custom.Info("Virtual Service not found. The manifest possible deleted.")
+			log.Custom.Info("Virtual Service not found. The manifest possible deleted.", "virtual service", appName)
 			return nil, err
 		}
 		log.Custom.Error(err, "Err")
-		log.Custom.Info("Error fetching Virtual Service" + appName)
+		log.Custom.Info("Error fetching Virtual Service", "virtual service", appName)
 		return nil, err
 	}
 	return virtualService, nil
@@ -49,14 +47,12 @@ func GetWeightForVirtualService(clientSet *client.Client, vs *istio.VirtualServi
 
 			if subset == stableText {
 				stableWeight := route.Weight
-				stableWeightStr := fmt.Sprintf("Virtual Service %s stable, has weight: %d", vs.Name, stableWeight)
-				log.Custom.Info(stableWeightStr)
+				log.Custom.Info("Virtual Service stable, has weight:", vs.Name, stableWeight)
 			}
 
 			if subset == canaryText {
 				canaryWeight := route.Weight
-				canaryWeightStr := fmt.Sprintf("Virtual Service %s canary, has weight: %d", vs.Name, canaryWeight)
-				log.Custom.Info(canaryWeightStr)
+				log.Custom.Info("Virtual Service canary, has weight:", vs.Name, canaryWeight)
 			}
 		}
 	}
@@ -77,26 +73,22 @@ func ReconfigureWeightVirtualService(clientSet *client.Client, vs *istio.Virtual
 			if subset == stableText {
 				stableWeight := route.Weight
 				stableNewWeight := 100 - weightCanary
-				stableWeightStr := fmt.Sprintf("Virtual Service %s weight stable: %d", vs.Name, stableWeight)
-				stableNewWeightStr := fmt.Sprintf("Virtual Service %s new weight stable after update: %d", vs.Name, stableNewWeight)
-				log.Custom.Info(stableWeightStr)
-				log.Custom.Info(stableNewWeightStr)
+				log.Custom.Info("Virtual Service current weight stable", vs.Name, stableWeight)
+				log.Custom.Info("Virtual Service new weight stable after updated", vs.Name, stableNewWeight)
 				vs.Spec.Http[i].Route[j].Weight = stableNewWeight
 			}
 
 			if subset == canaryText {
 				canaryWeight := route.Weight
-				canaryWeightStr := fmt.Sprintf("Virtual Service %s weight canary: %d", vs.Name, canaryWeight)
-				canaryNewWeightStr := fmt.Sprintf("Virtual Service %s new weight canary after update: %d", vs.Name, weightCanary)
-				log.Custom.Info(canaryWeightStr)
-				log.Custom.Info(canaryNewWeightStr)
+				log.Custom.Info("Virtual Service current weight canary", vs.Name, canaryWeight)
+				log.Custom.Info("Virtual Service new weight canary after update", vs.Name, weightCanary)
 				vs.Spec.Http[i].Route[j].Weight = weightCanary
 			}
 		}
 	}
 
 	if originalVs.Spec.Http[0].Route[0].Weight == vs.Spec.Http[0].Route[0].Weight {
-		log.Custom.Info("Skip Virtual service values why not changes")
+		log.Custom.Info("Skip Virtual service values why not changes", "virtual service", vs.Name)
 		return vs, nil
 	}
 
@@ -113,7 +105,7 @@ func UpdateVirtualServicePercentage(clientSet *client.Client, canaryDeployment *
 	vs, err := GetVirtualServiceForDeployment(clientSet, canaryDeployment.Spec.AppName, namespace)
 
 	if err == nil {
-		_, err = ReconfigureWeightVirtualService(clientSet, vs, canaryDeployment.Spec.Steps[canaryDeployment.ActualStep-1].SetWeight)
+		_, err = ReconfigureWeightVirtualService(clientSet, vs, canaryDeployment.Spec.Steps[canaryDeployment.CurrentStep-1].SetWeight)
 		return vs, err
 	}
 
@@ -159,7 +151,7 @@ func ResetFullPercentageToStable(clientSet *client.Client, canaryDeployment *v1a
 		}
 
 		if originalVs.Spec.Http[0].Route[0].Weight == vs.Spec.Http[0].Route[0].Weight {
-			log.Custom.Info("Skip Virtual service values why not changes")
+			log.Custom.Info("Skip Virtual service values why not changes in reset all for stable version", "virtual service", vs.Name, "app", canaryDeployment.Spec.AppName)
 			return vs, nil
 		}
 
@@ -168,7 +160,7 @@ func ResetFullPercentageToStable(clientSet *client.Client, canaryDeployment *v1a
 		if err != nil {
 			return nil, err
 		}
-		log.Custom.Info("All traffic for virtual service " + canaryDeployment.Spec.AppName + " changed to 100% for stable deployment")
+		log.Custom.Info("All traffic for virtual service changed to 100% for stable deployment", "virtual service", vs.Name, "app", canaryDeployment.Spec.AppName)
 		return vs, nil
 	}
 
