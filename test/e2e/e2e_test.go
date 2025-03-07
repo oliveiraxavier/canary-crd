@@ -31,16 +31,16 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "test-system"
+const namespace = "test-canary-deployment"
 
 // serviceAccountName created for the project
-const serviceAccountName = "test-controller-manager"
+const serviceAccountName = "canary-deployment-controller-manager-c-mng"
 
 // metricsServiceName is the name of the metrics service of the project
-const metricsServiceName = "test-controller-manager-metrics-service"
+const metricsServiceName = "canary-deployment-controller-mng-metrics-svc"
 
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
-const metricsRoleBindingName = "test-metrics-binding"
+const metricsRoleBindingName = "canary-deployment-metrics-binding"
 
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
@@ -173,7 +173,7 @@ var _ = Describe("Manager", Ordered, func() {
 		It("should ensure the metrics endpoint is serving metrics", func() {
 			By("creating a ClusterRoleBinding for the service account to allow access to metrics")
 			cmd := exec.Command("kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
-				"--clusterrole=test-metrics-reader",
+				"--clusterrole=canary-deployment-metrics-reader",
 				fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
 			)
 			_, err := utils.Run(cmd)
