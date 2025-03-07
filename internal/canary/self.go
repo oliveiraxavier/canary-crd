@@ -53,17 +53,17 @@ func GetRequeueTime(canaryDeployment *v1alpha1.CanaryDeployment) int64 {
 
 	if canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Seconds > 0 {
 		requeueTime = int64(canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Seconds)
-		log.Custom.Info("Canary deployment will be paused", "seconds", requeueTime, "app", appName)
+		log.Custom.Info("Canary deployment will be paused", "seconds", requeueTime, "app", appName, "current step", canaryDeployment.CurrentStep)
 	}
 
 	if canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Minutes > 0 {
 		requeueTime = int64(canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Minutes * 60)
-		log.Custom.Info("Canary deployment will be paused", "minutes", requeueTime/60, "app", appName)
+		log.Custom.Info("Canary deployment will be paused", "minutes", requeueTime/60, "app", appName, "current step", canaryDeployment.CurrentStep)
 	}
 
 	if canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Hours > 0 {
 		requeueTime = int64(canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Hours * 3600)
-		log.Custom.Info("Canary deployment will be paused", "hours", canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Hours/3600, "app", appName)
+		log.Custom.Info("Canary deployment will be paused", "hours", canaryDeployment.Spec.Steps[keyCurrentStep].Pause.Hours/3600, "app", appName, "current step", canaryDeployment.CurrentStep)
 	}
 
 	return requeueTime

@@ -60,7 +60,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment); err != nil {
 
 		err := r.Client.Get(ctx, req.NamespacedName, &canaryDeployment)
-		log.Custom.Info("Canary Deployment not found, the manifest possible deleted after fully upgrade.")
+		log.Custom.Info("Canary Deployment not found. The manifest possible deleted after fully upgrade.")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -70,7 +70,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	stableVersion := canaryDeployment.Spec.Stable
 
 	if stableVersion == newVersion {
-		result, err := FinalizeReconcile(&r.Client, &canaryDeployment)
+		result, err := FinalizeReconcile(&r.Client, &canaryDeployment, false)
 		return result, err
 	}
 
@@ -94,22 +94,16 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		newCanaryDeployment, err := canary.NewCanaryDeployment(&r.Client, stableDeployment, appName, newVersion)
 
 		if newCanaryDeployment != nil && err == nil {
-			log.Custom.Info("Canary Deployment created")
-			log.Custom.Info("App Name: " + appName)
-			log.Custom.Info("New version: " + newVersion)
-			log.Custom.Info("Stable version: " + stableVersion)
-			// _, err = canary.SetSyncDate(&r.Client, &canaryDeployment)
-			// if err != nil {
-			// 	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
-			// }
-			// return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			log.Custom.Info("Canary Deployment created", "app", appName)
+			log.Custom.Info("Canary Deployment stable version", "version", stableVersion)
+			log.Custom.Info("Canary Deployment new version", "version", newVersion)
 		}
 
 		// Prevent lose current step when restart pod
 		if !utils.NowIsAfterOrEqualCompareDate(canaryDeployment.SyncAfter) {
-			log.Custom.Info("Next step is after", "date", canaryDeployment.SyncAfter)
+			log.Custom.Info("Next step is after", "date", canaryDeployment.SyncAfter, "app", appName)
 			timeRemaing := utils.GetTimeRemaining(canaryDeployment.SyncAfter)
-			log.Custom.Info("Time remaining is", "time", timeRemaing)
+			log.Custom.Info("Time remaining is", "time", timeRemaing, "app", appName)
 			if timeRemaing > 0 {
 				return ctrl.Result{RequeueAfter: timeRemaing}, nil
 			}
