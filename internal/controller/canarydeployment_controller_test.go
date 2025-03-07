@@ -9,7 +9,6 @@ import (
 	istiov1alpha3 "istio.io/api/networking/v1alpha3"
 	istio "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ctrlRuntime "sigs.k8s.io/controller-runtime"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -152,9 +151,10 @@ var _ = Describe("CanaryDeployment Controller", func() {
 						Namespace: "default",
 					},
 					Spec: appsv1alpha1.CanaryDeploymentSpec{
-						AppName: resourceAppName,
-						Stable:  resourceStableVersion,
-						Canary:  resourceCanaryVersion,
+						AppName:                 resourceAppName,
+						Stable:                  resourceStableVersion,
+						Canary:                  resourceCanaryVersion,
+						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
 							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
 							{SetWeight: 20, Pause: appsv1alpha1.Pause{Seconds: 15}},
@@ -194,22 +194,32 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			By("Find canaryResource deployment to delete")
 			err = k8sClient.Get(ctx, typeNamespacedNameCanary, canaryResource)
-			if err == nil {
+			if !errors.IsNotFound(err) {
 				By("Cleanup canaryResource deployment")
 				Expect(k8sClient.Delete(ctx, canaryResource)).To(Succeed())
 			}
 
 		})
 
-		It("Should requeue if the CanaryDeployment is not found", func() {
-			By("Reconciling a non-existent resource")
+		It("Should stop reconcile when CanaryDeployment CRD is not found", func() {
+			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+			Expect(err).ToNot(HaveOccurred())
 
-			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      "non-existent-resource",
-					Namespace: "default",
-				},
-			})
+			Expect(k8sClient.Delete(ctx, canarydeployment)).To(Succeed())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+
+		})
+
+		It("Should stop reconcile when Stable Deployment is not found", func() {
+			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(k8sClient.Delete(ctx, stableResource)).To(Succeed())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ctrl).To(Equal(reconcile.Result{}))
 
@@ -364,11 +374,10 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		It("Test statements for Stable deployment ", func() {
 			appName := canarydeployment.Spec.AppName
-			newVersion := canarydeployment.Spec.Canary
 			stableDeployment, _ := canary.GetStableDeployment(&k8sClient, appName, "default")
 			Expect(stableDeployment).ToNot(BeNil())
 
-			newCanaryDeployment, err := canary.NewCanaryDeployment(&k8sClient, stableDeployment, appName, newVersion)
+			newCanaryDeployment, err := canary.NewCanaryDeployment(&k8sClient, stableDeployment, canarydeployment)
 			Expect(newCanaryDeployment).ToNot(BeNil())
 			Expect(err).ToNot(HaveOccurred())
 
