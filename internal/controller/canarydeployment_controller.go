@@ -105,18 +105,18 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			// return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
 
-		//Prevent lose current step when restart pod
+		// Prevent lose current step when restart pod
 		if !utils.NowIsAfterOrEqualCompareDate(canaryDeployment.SyncAfter) {
 			log.Custom.Info("Next step is after", "date", canaryDeployment.SyncAfter)
 			timeRemaing := utils.GetTimeRemaining(canaryDeployment.SyncAfter)
 			log.Custom.Info("Time remaining is", "time", timeRemaing)
 			if timeRemaing > 0 {
-				return ctrl.Result{RequeueAfter: time.Duration(timeRemaing)}, nil
+				return ctrl.Result{RequeueAfter: timeRemaing}, nil
 			}
 
 		}
 		_, _ = canary.SetCurrentStep(&r.Client, &canaryDeployment)
-		//Set next sync datetime to prevent lose current step when restart pod
+		// Set next sync datetime to prevent lose current step when restart pod
 		_, _ = canary.SetSyncDate(&r.Client, &canaryDeployment)
 		vs, _ := canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeployment, namespace)
 

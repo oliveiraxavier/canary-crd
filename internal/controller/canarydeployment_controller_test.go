@@ -381,7 +381,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			canarydeployment.CurrentStep = 1
 
-			canary.SetSyncDate(&k8sClient, canarydeployment)
+			_, _ = canary.SetSyncDate(&k8sClient, canarydeployment)
 
 			canarydeployment.CurrentStep = 1
 			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
