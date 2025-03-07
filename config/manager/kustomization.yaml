@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: oxmarcos/controller-canary-deployments
-  newTag: 1.0.1
+  newTag: 1.0.2

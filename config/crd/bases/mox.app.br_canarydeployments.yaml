@@ -19,7 +19,7 @@ spec:
       openAPIV3Schema:
         description: CanaryDeployment is the Schema for the canarydeployments API.
         properties:
-          actualStep:
+          CurrentStep:
             default: 0
             format: int32
             maximum: 100
@@ -83,6 +83,10 @@ spec:
             - stable
             - steps
             type: object
+          syncAfter:
+            type: string
+        required:
+        - spec
         type: object
     served: true
     storage: true

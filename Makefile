@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= oxmarcos/controller-canary-deployments:1.0.1
+IMG ?= oxmarcos/controller-canary-deployments:1.0.2
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -59,7 +59,11 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet setup-envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+
+	if [ ! -f "./config/crd/bases/istio-crd.yaml" ]; then\
+		curl  "https://raw.githubusercontent.com/istio/api/master/kubernetes/customresourcedefinitions.gen.yaml" -o ./config/crd/bases/istio-crd.yaml;\
+	fi
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) ./internal/canary/ -coverprofile cover.out
 
 # TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
@@ -123,7 +127,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- $(CONTAINER_TOOL) buildx create --name test-builder
 	$(CONTAINER_TOOL) buildx use test-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag "${IMG}-cross" -f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm test-builder
 	rm Dockerfile.cross
 

@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
-  name: canary-deployment
+  name: test-canary-deployment
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -27,7 +27,7 @@ spec:
       openAPIV3Schema:
         description: CanaryDeployment is the Schema for the canarydeployments API.
         properties:
-          actualStep:
+          CurrentStep:
             default: 0
             format: int32
             maximum: 100
@@ -91,6 +91,10 @@ spec:
             - stable
             - steps
             type: object
+          syncAfter:
+            type: string
+        required:
+        - spec
         type: object
     served: true
     storage: true
@@ -101,8 +105,8 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
-  name: canary-deployment-controller-manager
-  namespace: canary-deployment
+  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  namespace: test-canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -111,7 +115,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
   name: canary-deployment-leader-election-role
-  namespace: canary-deployment
+  namespace: test-canary-deployment
 rules:
 - apiGroups:
   - ""
@@ -314,15 +318,15 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
   name: canary-deployment-leader-election-rolebinding
-  namespace: canary-deployment
+  namespace: test-canary-deployment
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: canary-deployment-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: canary-deployment-controller-manager
-  namespace: canary-deployment
+  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  namespace: test-canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -337,8 +341,8 @@ roleRef:
   name: canary-deployment-manager-role
 subjects:
 - kind: ServiceAccount
-  name: canary-deployment-controller-manager
-  namespace: canary-deployment
+  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  namespace: test-canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -350,8 +354,8 @@ roleRef:
   name: canary-deployment-metrics-auth-role
 subjects:
 - kind: ServiceAccount
-  name: canary-deployment-controller-manager
-  namespace: canary-deployment
+  name: canary-deployment-canary-deployment-controller-manager-c-mng
+  namespace: test-canary-deployment
 ---
 apiVersion: v1
 kind: Service
@@ -360,8 +364,8 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
-  name: canary-deployment-controller-manager-metrics-service
-  namespace: canary-deployment
+  name: canary-deployment-canary-deployment-controller-mng-metrics-svc
+  namespace: test-canary-deployment
 spec:
   ports:
   - name: https
@@ -380,7 +384,7 @@ metadata:
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
   name: canary-deployment-controller-manager
-  namespace: canary-deployment
+  namespace: test-canary-deployment
 spec:
   replicas: 1
   selector:
@@ -402,7 +406,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: oxmarcos/controller-canary-deployments:1.0.1
+        image: oxmarcos/controller-canary-deployments:1.0.2
         livenessProbe:
           httpGet:
             path: /healthz
@@ -434,6 +438,6 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      serviceAccountName: canary-deployment-controller-manager
+      serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
       volumes: []
