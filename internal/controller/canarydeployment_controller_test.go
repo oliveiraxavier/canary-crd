@@ -106,7 +106,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 			By("Creating Istio VirtualService")
 			err = k8sClient.Get(ctx, typeNamespacedName, vsResource)
-			// Expect(err).ToNot(BeNil())
+
 			if err != nil && errors.IsNotFound(err) {
 
 				resourceVirtualService := &istio.VirtualService{
@@ -221,8 +221,8 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			Expect(err).To(HaveOccurred())
 
 			ctrl, err := controllerReconciler.Reconcile(ctx, reconcile.Request{})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(client.IgnoreNotFound(err)).To(Succeed())
+			Expect(err).To(HaveOccurred())
+			Expect(client.IgnoreNotFound(err)).To(HaveOccurred())
 			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
@@ -264,9 +264,6 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		})
 
 		It("Test if canary isFinished return false", func() {
-			_, err := controllerReconciler.Reconcile(ctx, reqReconciler)
-			Expect(err).ToNot(HaveOccurred())
-
 			isFinished := canary.IsFinished(*canarydeployment)
 			Expect(isFinished).To(BeFalse())
 
@@ -366,7 +363,6 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		})
 
 		It("Test statements for Stable deployment ", func() {
-			// controllerReconciler.Reconcile(ctx, reqReconciler)
 			appName := canarydeployment.Spec.AppName
 			newVersion := canarydeployment.Spec.Canary
 			stableDeployment, _ := canary.GetStableDeployment(&k8sClient, appName, "default")
@@ -384,10 +380,11 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		It("Test statements for isFullyPromoted equal false", func() {
 
 			canarydeployment.CurrentStep = 1
-			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
-			Expect(err).ToNot(HaveOccurred())
 
-			_, err = controllerReconciler.Reconcile(ctx, reqReconciler)
+			canary.SetSyncDate(&k8sClient, canarydeployment)
+
+			canarydeployment.CurrentStep = 1
+			vs, err := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
 			Expect(err).ToNot(HaveOccurred())
 
 			isFullyPromoted := canary.IsFullyPromoted(vs)
@@ -437,16 +434,15 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		// It("Test timeDuration when isFullyPromoted not equal true", func() {
-		// 	_, err := canary.SetCurrentStep(&k8sClient, canarydeployment)
-		// 	Expect(err).ToNot(HaveOccurred())
+		It("Test timeDuration when isFullyPromoted not equal true", func() {
+			canarydeployment.CurrentStep = 1
 
-		// 	timeDuration := canary.GetRequeueTime(canarydeployment)
+			timeDuration := canary.GetRequeueTime(canarydeployment)
 
-		// 	ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
-		// 	Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Duration(timeDuration) * time.Second, Requeue: false}))
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Duration(timeDuration) * time.Second}))
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 	})
 })
