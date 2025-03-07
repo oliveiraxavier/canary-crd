@@ -134,11 +134,15 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{RequeueAfter: time.Duration(timeDuration) * time.Second}, nil
 	}
 
-	result, err := FinalizeReconcile(&r.Client, &canaryDeployment)
+	result, err := FinalizeReconcile(&r.Client, &canaryDeployment, true)
 	return result, err
 }
 
-func FinalizeReconcile(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment) (ctrl.Result, error) {
+func FinalizeReconcile(clientSet *client.Client, canaryDeployment *v1alpha1.CanaryDeployment, finalizeOnly bool) (ctrl.Result, error) {
+
+	if finalizeOnly {
+		return ctrl.Result{}, nil
+	}
 	appName := canaryDeployment.Spec.AppName
 	name := canaryDeployment.Name
 	log.Custom.Info("The stable version must be different from the canary version", "stable version", canaryDeployment.Spec.Stable, "canary version", canaryDeployment.Spec.Canary)
