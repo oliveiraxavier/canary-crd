@@ -59,7 +59,6 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if err := r.Client.Get(ctx, req.NamespacedName, &canaryDeploymentCrd); err != nil {
 
-		err := r.Client.Get(ctx, req.NamespacedName, &canaryDeploymentCrd)
 		log.Custom.Info("Canary Deployment not found. The manifest possible deleted after fully upgrade.")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -113,7 +112,6 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			log.Custom.Info("Canary deployment promoted", "app", appName)
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
-
 		timeDuration := canary.GetRequeueTime(&canaryDeploymentCrd)
 
 		if timeDuration == 0 {

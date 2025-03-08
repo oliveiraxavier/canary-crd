@@ -2,8 +2,6 @@ package utils
 
 import (
 	"time"
-
-	log "github.com/oliveiraxavier/canary-crd/internal/logs"
 )
 
 // Examples to use
@@ -22,7 +20,18 @@ const timeFormat = time.RFC3339
 // DateTime struct to encapsulate time functionality
 type DateTime struct {
 	Time time.Time `json:"time"`
+	// GetTimeRemaining func(string) time.Duration
 }
+
+var GetTimeRemaining = func(futureDateToCompare string) time.Duration {
+	parsedTime, _ := time.Parse(timeFormat, futureDateToCompare)
+	return parsedTime.Sub(Now().Time) // return time.Until(parsedTime)
+}
+
+// func GetTimeRemaining(futureDateToCompare string) time.Duration {
+// 	parsedTime, _ := time.Parse(timeFormat, futureDateToCompare)
+// 	return parsedTime.Sub(Now().Time) //return time.Until(parsedTime)
+// }
 
 // Now initializes DateTime with the current time
 func Now() DateTime {
@@ -48,12 +57,6 @@ func (dt DateTime) AddSeconds(seconds int64) DateTime {
 func NowIsAfterOrEqualCompareDate(dateToCompare string) bool {
 	parsedTime, _ := time.Parse(timeFormat, dateToCompare)
 	return Now().Time.After(parsedTime) || Now().Time.Equal(parsedTime)
-}
-
-func GetTimeRemaining(futureDateToCompare string) time.Duration {
-	log.Custom.Info(futureDateToCompare)
-	parsedTime, _ := time.Parse(timeFormat, futureDateToCompare)
-	return parsedTime.Sub(Now().Time)
 }
 
 // ToString returns the default string representation
