@@ -8,6 +8,12 @@ spec:
   appName: nginx
   stable: "1.26-alpine"
   canary: "1.27-alpine"
+  configMapNames:
+  - nginx-new1-env
+  - nginx-new2-env
+  istioVirtualServiceName: nginx-vs
+  secretNames:
+  - nginx-secret
   steps:
   - setWeight: 10
     pause: {seconds: 60}
@@ -29,6 +35,7 @@ spec:
   appName: nginx-new
   stable: "1.26-alpine"
   canary: "1.27-alpine"
+  istioVirtualServiceName: nginx-new-vs
   steps:
   - setWeight: 10
     pause: {seconds: 120}

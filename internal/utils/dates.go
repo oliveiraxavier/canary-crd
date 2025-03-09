@@ -20,12 +20,18 @@ const timeFormat = time.RFC3339
 // DateTime struct to encapsulate time functionality
 type DateTime struct {
 	Time time.Time `json:"time"`
+	// GetTimeRemaining func(string) time.Duration
 }
 
-// Format formats the datetime in a given layout
-func (dt DateTime) Format(layout string) string {
-	return dt.Time.Format(layout)
+var GetTimeRemaining = func(futureDateToCompare string) time.Duration {
+	parsedTime, _ := time.Parse(timeFormat, futureDateToCompare)
+	return parsedTime.Sub(Now().Time) // return time.Until(parsedTime)
 }
+
+// func GetTimeRemaining(futureDateToCompare string) time.Duration {
+// 	parsedTime, _ := time.Parse(timeFormat, futureDateToCompare)
+// 	return parsedTime.Sub(Now().Time) //return time.Until(parsedTime)
+// }
 
 // Now initializes DateTime with the current time
 func Now() DateTime {
@@ -53,12 +59,12 @@ func NowIsAfterOrEqualCompareDate(dateToCompare string) bool {
 	return Now().Time.After(parsedTime) || Now().Time.Equal(parsedTime)
 }
 
-func GetTimeRemaining(futureDateToCompare string) time.Duration {
-	parsedTime, _ := time.Parse(timeFormat, futureDateToCompare)
-	return parsedTime.Sub(Now().Time)
-}
-
 // ToString returns the default string representation
 func (dt DateTime) ToString() string {
 	return dt.Format(timeFormat)
+}
+
+// Format formats the datetime in a given layout
+func (dt DateTime) Format(layout string) string {
+	return dt.Time.Format(layout)
 }
