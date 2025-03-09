@@ -69,21 +69,12 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	stableVersion := canaryDeploymentCrd.Spec.Stable
 
 	if stableVersion == newVersion {
-		result, err := FinalizeReconcile(&r.Client, &canaryDeploymentCrd, false)
+		result, err := finalizeReconcile(&r.Client, &canaryDeploymentCrd, false)
 		return result, err
 	}
 
 	if canary.IsFinished(canaryDeploymentCrd) {
-		err := canary.RolloutCanaryDeploymentToStable(&r.Client, &canaryDeploymentCrd, namespace, appName)
-
-		if err != nil {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
-		}
-		_, err = canary.ResetFullPercentageToStable(&r.Client, &canaryDeploymentCrd, namespace)
-		if err != nil {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
-		}
-		return ctrl.Result{}, nil
+		return rolloutCanaryAndResetIstioVs(&r.Client, &canaryDeploymentCrd, namespace, appName)
 	}
 
 	stableDeployment, _ := canary.GetStableDeployment(&r.Client, appName, namespace)
@@ -122,11 +113,26 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	}
 
-	result, err := FinalizeReconcile(&r.Client, &canaryDeploymentCrd, true)
+	result, err := finalizeReconcile(&r.Client, &canaryDeploymentCrd, true)
 	return result, err
 }
 
-func FinalizeReconcile(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, finalizeOnly bool) (ctrl.Result, error) {
+func rolloutCanaryAndResetIstioVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string, appName string) (ctrl.Result, error) {
+
+	err := canary.RolloutCanaryDeploymentToStable(clientSet, canaryDeploymentCrd, namespace, appName)
+
+	if err != nil {
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+	}
+	_, err = canary.ResetFullPercentageToStable(clientSet, canaryDeploymentCrd, namespace)
+	if err != nil {
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func finalizeReconcile(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, finalizeOnly bool) (ctrl.Result, error) {
 
 	if finalizeOnly {
 		return ctrl.Result{}, nil

@@ -9,6 +9,7 @@ import (
 	istiov1alpha3 "istio.io/api/networking/v1alpha3"
 	istio "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	ctrlRuntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appsv1alpha1 "github.com/oliveiraxavier/canary-crd/api/v1alpha1"
+	"github.com/oliveiraxavier/canary-crd/internal/canary"
 	"github.com/oliveiraxavier/canary-crd/internal/controller"
 	"github.com/oliveiraxavier/canary-crd/internal/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -169,7 +171,6 @@ var _ = Describe("CanaryDeployment Controller", func() {
 		AfterEach(func() {
 			By("Find stableResource deployment to delete")
 			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
-			// Expect(err).NotTo(HaveOccurred())
 			if err == nil {
 				By("Cleanup stableResource deployment")
 				Expect(k8sClient.Delete(ctx, stableResource)).To(Succeed())
@@ -199,9 +200,31 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		})
 
-		It("should return requeue after if SyncAfter is in the future", func() {
+		It("Should stop reconcile when CanaryDeployment CRD is not found", func() {
+			err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
+			Expect(err).ToNot(HaveOccurred())
 
-			controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(k8sClient.Delete(ctx, canarydeployment)).To(Succeed())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+
+		})
+
+		It("Test stableVersion equals  newVersion", func() {
+			canarydeployment.Spec.Canary = canarydeployment.Spec.Stable
+			Expect(canarydeployment.Spec.Stable).To(Equal(canarydeployment.Spec.Canary))
+			if canarydeployment.Spec.Canary == canarydeployment.Spec.Stable {
+
+				ctrl, err := controller.FinalizeReconcile(&k8sClient, canarydeployment, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ctrl).To(Equal(reconcile.Result{}))
+			}
+		})
+
+		It("should return requeue after if SyncAfter is in the future", func() {
+			_, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
 
 			originalGetTimeRemaining := utils.GetTimeRemaining
 			defer func() { utils.GetTimeRemaining = originalGetTimeRemaining }()
@@ -217,28 +240,40 @@ var _ = Describe("CanaryDeployment Controller", func() {
 			}
 
 			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(ctrl.RequeueAfter).To(Equal(parsedTime.Sub(nowTime)))
 
 		})
 
 		It("Test if now is after or equal compare datetime", func() {
-			controllerReconciler.Reconcile(ctx, reqReconciler)
+			_, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
 
 			hasTimeRemaining := !utils.NowIsAfterOrEqualCompareDate(utils.Now().AddSeconds(20).ToString())
 			Expect(hasTimeRemaining).To(BeTrue())
 		})
-		// 	It("Should stop reconcile when CanaryDeployment CRD is not found", func() {
-		// 		err := k8sClient.Get(ctx, typeNamespacedName, canarydeployment)
-		// 		Expect(err).ToNot(HaveOccurred())
 
-		// 		Expect(k8sClient.Delete(ctx, canarydeployment)).To(Succeed())
+		It("Should stop reconcile when Stable Deployment is not found", func() {
+			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
+			Expect(err).ToNot(HaveOccurred())
 
-		// 		ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
-		// 		Expect(err).NotTo(HaveOccurred())
-		// 		Expect(ctrl).To(Equal(reconcile.Result{}))
+			Expect(k8sClient.Delete(ctx, stableResource)).To(Succeed())
 
-		// 	})
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
+
+		})
+
+		It("Test IsFullyPromoted", func() {
+			totalSteps := int32(len(canarydeployment.Spec.Steps))
+			canarydeployment.CurrentStep = totalSteps
+			vs, _ := canary.UpdateVirtualServicePercentage(&k8sClient, canarydeployment, "default")
+			Expect(canary.IsFullyPromoted(vs)).To(BeTrue())
+
+			ctrl, err := controllerReconciler.Reconcile(ctx, reqReconciler)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{RequeueAfter: time.Second * 10}))
+		})
 
 		// 	It("Should stop reconcile when Stable Deployment is not found", func() {
 		// 		err := k8sClient.Get(ctx, typeNamespacedName, stableResource)

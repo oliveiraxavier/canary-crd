@@ -108,7 +108,7 @@ var _ = Describe("Test deployment", func() {
 		clientSet = fake.NewClientBuilder().WithScheme(scheme).Build()
 		mocked = &mockClient{Client: clientSet}
 		err := clientSet.Get(context.Background(), typeNamespacedName, canaryDeploymentCrd)
-		Expect(err).ToNot(BeNil())
+		Expect(err).To(HaveOccurred())
 
 		canaryDeploymentCrd = &appsv1alpha1.CanaryDeployment{
 			ObjectMeta: metav1.ObjectMeta{
