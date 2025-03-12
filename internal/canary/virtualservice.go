@@ -16,7 +16,6 @@ const (
 )
 
 func GetVirtualServiceForDeployment(clientSet *client.Client, istioVirtualServiceName string, namespace string) (*istio.VirtualService, error) {
-	// TODO add app name based in spec
 	virtualService := &istio.VirtualService{}
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: istioVirtualServiceName, Namespace: namespace}, virtualService)
 

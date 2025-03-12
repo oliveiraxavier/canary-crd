@@ -150,6 +150,11 @@ spec:
   - setWeight: 100
 ```
 
+### To view coverage as html
+```
+make test
+go tool cover -html cover.out -o cover.html
+```
 ### By providing a Helm Chart
 
 1. Build the chart using the optional helm plugin

@@ -63,7 +63,7 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 	if [ ! -f "./config/crd/bases/istio-crd.yaml" ]; then\
 		curl  "https://raw.githubusercontent.com/istio/api/master/kubernetes/customresourcedefinitions.gen.yaml" -o ./config/crd/bases/istio-crd.yaml;\
 	fi
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v $$(go list ./... | grep -v /e2e) ./internal/canary/ -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v $$(go list ./... | grep -v /e2e) ./internal/canary/    -coverprofile cover.out
 
 # TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
