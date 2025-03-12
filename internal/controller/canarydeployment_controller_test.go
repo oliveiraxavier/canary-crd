@@ -8,11 +8,10 @@ import (
 	. "github.com/onsi/gomega"
 	istiov1alpha3 "istio.io/api/networking/v1alpha3"
 	istio "istio.io/client-go/pkg/apis/networking/v1alpha3"
-	ctrlRuntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlRuntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -26,7 +25,6 @@ import (
 )
 
 var _ = Describe("CanaryDeployment Controller", func() {
-
 	const resourceName = "test-resource"
 	const resourceAppName = "test-resource"
 	const resourceStableVersion = "v1"
@@ -57,6 +55,7 @@ var _ = Describe("CanaryDeployment Controller", func() {
 	Context("When new CanaryDeployment is created on cluster", func() {
 
 		BeforeEach(func() {
+
 			controllerReconciler = controller.CanaryDeploymentReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -212,15 +211,22 @@ var _ = Describe("CanaryDeployment Controller", func() {
 
 		})
 
-		It("Test stableVersion equals  newVersion", func() {
-			canarydeployment.Spec.Canary = canarydeployment.Spec.Stable
-			Expect(canarydeployment.Spec.Stable).To(Equal(canarydeployment.Spec.Canary))
-			if canarydeployment.Spec.Canary == canarydeployment.Spec.Stable {
+		It("Test stableVersion equals newVersion", func() {
+			stableVersion := canarydeployment.Spec.Stable
+			canarydeployment.Spec.Canary = stableVersion
+			newVersion := canarydeployment.Spec.Canary
+			Expect(stableVersion).To(Equal(newVersion))
 
-				ctrl, err := controller.FinalizeReconcile(&k8sClient, canarydeployment, false)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(ctrl).To(Equal(reconcile.Result{}))
-			}
+		})
+
+		It("Test FinalizeReconcile when stableVersion equals newVersion ", func() {
+			stableVersion := canarydeployment.Spec.Stable
+			canarydeployment.Spec.Canary = stableVersion
+			k8sClient.Update(ctx, canarydeployment)
+			_, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
+			ctrl, err := controller.FinalizeReconcile(&k8sClient, canarydeployment, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ctrl).To(Equal(reconcile.Result{}))
 		})
 
 		It("should return requeue after if SyncAfter is in the future", func() {

@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
-  name: test-canary-deployment
+  name: canary-deployment
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -120,7 +120,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
   name: canary-deployment-controller-manager-c-mng
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -129,7 +129,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
   name: canary-deployment-leader-election-role
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 rules:
 - apiGroups:
   - ""
@@ -332,7 +332,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: canary-deployments
   name: canary-deployment-leader-election-rolebinding
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -340,7 +340,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: canary-deployment-controller-manager-c-mng
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -356,7 +356,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: canary-deployment-controller-manager-c-mng
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -369,7 +369,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: canary-deployment-controller-manager-c-mng
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 ---
 apiVersion: v1
 kind: Service
@@ -379,7 +379,7 @@ metadata:
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
   name: canary-deployment-controller-mng-metrics-svc
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 spec:
   ports:
   - name: https
@@ -398,7 +398,7 @@ metadata:
     app.kubernetes.io/name: canary-deployments
     control-plane: controller-manager
   name: canary-deployment-controller-manager
-  namespace: test-canary-deployment
+  namespace: canary-deployment
 spec:
   replicas: 1
   selector:
@@ -415,7 +415,7 @@ spec:
     spec:
       containers:
       - args:
-        - --metrics-bind-address=:8443
+        - --metrics-bind-address=0
         - --leader-elect
         - --health-probe-bind-address=:8081
         command:
