@@ -47,13 +47,12 @@ func NewCanaryDeployment(clientSet *client.Client, deployment *appsv1.Deployment
 	imageName := strings.Split(newCanaryDeployment.Spec.Template.Spec.Containers[0].Image, ":")
 	newCanaryDeployment.Spec.Template.Spec.Containers[0].Image = imageName[0] + ":" + deploymentCanaryVersion
 
-	VerifyToAddEnvFrom(canaryDeploymentCrd, newCanaryDeployment)
-
 	deploymentCanaryExists, _ := GetCanaryDeployment(clientSet, appName, newCanaryDeployment.Namespace)
 
 	if deploymentCanaryExists == nil {
 		newCanaryDeployment.Name = appName + "-canary"
 		newCanaryDeployment.ObjectMeta = metav1.ObjectMeta{Name: newCanaryDeployment.Name, Namespace: newCanaryDeployment.Namespace}
+		VerifyToAddEnvFrom(canaryDeploymentCrd, newCanaryDeployment)
 
 		err := (*clientSet).Create(context.Background(), newCanaryDeployment)
 

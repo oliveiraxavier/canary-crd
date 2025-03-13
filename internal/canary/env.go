@@ -12,7 +12,7 @@ func VerifyToAddEnvFrom(canaryDeploymentCrd *v1alpha1.CanaryDeployment, newCanar
 	newEnvFromSource := []corev1.EnvFromSource{}
 	if len(canaryDeploymentCrd.Spec.ConfigMapNames) > 0 {
 		for _, envValue := range canaryDeploymentCrd.Spec.ConfigMapNames {
-			log.Custom.Info("Add configmap reference", "value", envValue, "app", newCanaryDeployment.Name)
+			log.Custom.Info("Add configmap reference for deployment", "value", envValue, "app", newCanaryDeployment.Name)
 			newEnvFromSource = append(newEnvFromSource, corev1.EnvFromSource{
 				ConfigMapRef: &corev1.ConfigMapEnvSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -25,7 +25,7 @@ func VerifyToAddEnvFrom(canaryDeploymentCrd *v1alpha1.CanaryDeployment, newCanar
 	}
 	if len(canaryDeploymentCrd.Spec.SecretNames) > 0 {
 		for _, envValue := range canaryDeploymentCrd.Spec.SecretNames {
-			log.Custom.Info("Add secret reference", "value", envValue, "app", newCanaryDeployment.Name)
+			log.Custom.Info("Add secret reference for deployment", "value", envValue, "app", newCanaryDeployment.Name)
 			newEnvFromSource = append(newEnvFromSource, corev1.EnvFromSource{
 				SecretRef: &corev1.SecretEnvSource{
 					LocalObjectReference: corev1.LocalObjectReference{

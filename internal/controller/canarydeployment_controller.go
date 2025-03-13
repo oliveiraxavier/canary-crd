@@ -59,7 +59,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if err := r.Client.Get(ctx, req.NamespacedName, &canaryDeploymentCrd); err != nil {
 
-		log.Custom.Info("Canary Deployment not found. The manifest possible deleted after fully upgrade.")
+		log.Custom.Info("Canary Deployment not found. The manifest possible deleted after fully promoted to stable", "app", req.Name, "namespace", req.Namespace)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -91,7 +91,8 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		if !utils.NowIsAfterOrEqualCompareDate(canaryDeploymentCrd.SyncAfter) {
 			log.Custom.Info("Next step is after", "date", canaryDeploymentCrd.SyncAfter, "app", appName)
 			timeRemaing := utils.GetTimeRemaining(canaryDeploymentCrd.SyncAfter)
-			log.Custom.Info("Time remaining is", "time", timeRemaing, "app", appName)
+			log.Custom.Info("Time remaining is", "step", canaryDeploymentCrd.CurrentStep, "time", timeRemaing, "app", appName)
+
 			return ctrl.Result{RequeueAfter: timeRemaing}, nil
 		}
 		_, _ = canary.SetCurrentStep(&r.Client, &canaryDeploymentCrd)
