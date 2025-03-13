@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: canary-deployment-controller-manager-c-mng
-  namespace: test-canary-deployment
+  namespace: canary-deployment

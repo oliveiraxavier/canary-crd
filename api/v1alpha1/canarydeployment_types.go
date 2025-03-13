@@ -35,10 +35,15 @@ type CanaryDeploymentSpec struct {
 	// +kubebuilder:validation:required
 	Canary string `json:"canary"`
 
-	// TODO
-	// VsName string `json:"vsName,omitempty"`
-	// ConfigMapName string `json:"configMapName,omitempty"`
-	// SecretName string `json:"secretName,omitempty"`
+	// +kubebuilder:validation:items:MinLength=1
+	ConfigMapNames []string `json:"configMapNames,omitempty"`
+
+	// +kubebuilder:validation:items:MinLength=1
+	SecretNames []string `json:"secretNames,omitempty"`
+
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:required
+	IstioVirtualServiceName string `json:"istioVirtualServiceName"`
 
 	// +kubebuilder:validation:listType=map
 	// +kubebuilder:validation:uniqueItems=true

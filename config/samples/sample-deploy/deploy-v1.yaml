@@ -1,3 +1,4 @@
+# Example with new configmaps and secrets
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,11 +27,16 @@ spec:
         name: nginx
         ports:
         - containerPort: 80
+        envFrom:
+        - configMapRef:
+            name: nginx-env
+        - secretRef:
+            name: nginx-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx
+  name: nginx-svc
 spec:
   selector:
     app: nginx
@@ -56,7 +62,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: nginx
+  name: nginx-vs
 spec:
   hosts:
   - nginx
@@ -70,3 +76,40 @@ spec:
         host: nginx
         subset: canary
       weight: 0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-env
+data:
+  APP_NAME: "nginx"
+  LEVEL: "debug"
+---
+# New for canary
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-secret-new
+type: Opaque
+data:
+  PASS: MTIzNA==
+---
+# New for canary
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-new1-env
+data:
+  APP_NAME: "nginx-canary"
+  LEVEL: "debug"
+---
+# New for canary
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-new2-env
+data:
+  APP_NAME: "nginx-canary"
+  LEVEL: "debug"
+
+

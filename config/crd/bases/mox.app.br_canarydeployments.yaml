@@ -50,6 +50,19 @@ spec:
               canary:
                 minLength: 1
                 type: string
+              configMapNames:
+                items:
+                  minLength: 1
+                  type: string
+                type: array
+              istioVirtualServiceName:
+                minLength: 1
+                type: string
+              secretNames:
+                items:
+                  minLength: 1
+                  type: string
+                type: array
               stable:
                 minLength: 1
                 type: string
@@ -80,6 +93,7 @@ spec:
             required:
             - appName
             - canary
+            - istioVirtualServiceName
             - stable
             - steps
             type: object
