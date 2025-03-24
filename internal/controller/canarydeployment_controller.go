@@ -33,6 +33,8 @@ import (
 	"github.com/oliveiraxavier/canary-crd/internal/utils"
 )
 
+const DEFAULT_TIME_REQUEUE = time.Second * 10
+
 // CanaryDeploymentReconciler reconciles a CanaryDeployment object
 type CanaryDeploymentReconciler struct {
 	client.Client
@@ -59,7 +61,8 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if err := r.Client.Get(ctx, req.NamespacedName, &canaryDeploymentCrd); err != nil {
 
-		log.Custom.Info("Canary Deployment not found. The manifest possible deleted after fully promoted to stable", "app", req.Name, "namespace", req.Namespace)
+		log.Custom.Info("Canary Deployment not found. The manifest was possibly deleted after being fully promoted canary to stable", "app", req.Name, "namespace", req.Namespace)
+
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -102,12 +105,12 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 		if canary.IsFullyPromoted(vs) {
 			log.Custom.Info("Canary deployment promoted", "app", appName)
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 		}
 		timeDuration := canary.GetRequeueTime(&canaryDeploymentCrd)
 
 		if timeDuration == 0 {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 		}
 
 		return ctrl.Result{RequeueAfter: time.Duration(timeDuration) * time.Second}, nil
@@ -123,11 +126,11 @@ func RolloutCanaryAndResetIstioVs(clientSet *client.Client, canaryDeploymentCrd 
 	err := canary.RolloutCanaryDeploymentToStable(clientSet, canaryDeploymentCrd, namespace, appName)
 
 	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 	}
 	_, err = canary.ResetFullPercentageToStable(clientSet, canaryDeploymentCrd, namespace)
 	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 	}
 
 	return ctrl.Result{}, nil

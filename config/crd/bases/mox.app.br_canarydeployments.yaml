@@ -69,6 +69,11 @@ spec:
               steps:
                 items:
                   properties:
+                    Weight:
+                      format: int32
+                      maximum: 100
+                      minimum: 1
+                      type: integer
                     pause:
                       properties:
                         hours:
@@ -81,13 +86,8 @@ spec:
                           format: int32
                           type: integer
                       type: object
-                    setWeight:
-                      format: int32
-                      maximum: 100
-                      minimum: 1
-                      type: integer
                   required:
-                  - setWeight
+                  - Weight
                   type: object
                 type: array
             required:

@@ -153,10 +153,10 @@ var _ = Describe("CanaryDeployment Controller", func() {
 						Canary:                  resourceCanaryVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 17}},
-							{SetWeight: 20, Pause: appsv1alpha1.Pause{Seconds: 22}},
-							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 27}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 17}},
+							{Weight: 20, Pause: appsv1alpha1.Pause{Seconds: 22}},
+							{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 27}},
+							{Weight: 100},
 						},
 					},
 				}
@@ -426,8 +426,8 @@ var _ = Describe("CanaryDeployment Controller with stable version equal canary",
 						Canary:                  resourceStableVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
+							{Weight: 100},
 						},
 					},
 				}
@@ -603,9 +603,9 @@ var _ = Describe("CanaryDeployment Controller in penultimate step", func() {
 						Canary:                  resourceCanaryVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
-							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 22}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
+							{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 22}},
+							{Weight: 100},
 						},
 					},
 				}
@@ -780,9 +780,9 @@ var _ = Describe("CanaryDeployment Controller in penultimate step", func() {
 						Canary:                  resourceCanaryVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
-							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 0}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
+							{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 0}},
+							{Weight: 100},
 						},
 					},
 				}
