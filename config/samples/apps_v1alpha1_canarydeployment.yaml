@@ -16,35 +16,37 @@ spec:
   - nginx-secret
   steps:
   - Weight: 10
-    pause: {seconds: 60}
+    pause: {seconds: 120}
   - Weight: 20
-    pause: {seconds: 60}
+    pause: {seconds: 120}
+  - Weight: 20
+    pause: {seconds: 120}
   - Weight: 45
-    pause: {seconds: 60}
+    pause: {seconds: 120}
   - Weight: 70
     pause: {minutes: 2}
   - Weight: 100
 ---
-apiVersion: mox.app.br/v1alpha1
-kind: CanaryDeployment
-metadata:
-  labels:
-    app.kubernetes.io/managed-by: kustomize
-  name: canarydeployment-2
-spec:
-  appName: nginx-new
-  stable: "1.26-alpine"
-  canary: "1.27-alpine"
-  istioVirtualServiceName: nginx-new-vs
-  steps:
-  - Weight: 10
-    pause: {seconds: 120}
-  - Weight: 20
-    pause: {seconds: 90}
-  - Weight: 55
-    pause: {seconds: 240}
-  - Weight: 82
-    pause: {seconds: 90}
-  - Weight: 89
-    pause: {minutes: 5}
-  - Weight: 100
+# apiVersion: mox.app.br/v1alpha1
+# kind: CanaryDeployment
+# metadata:
+#   labels:
+#     app.kubernetes.io/managed-by: kustomize
+#   name: canarydeployment-2
+# spec:
+#   appName: nginx-new
+#   stable: "1.26-alpine"
+#   canary: "1.27-alpine"
+#   istioVirtualServiceName: nginx-new-vs
+#   steps:
+#   - Weight: 10
+#     pause: {seconds: 120}
+#   - Weight: 20
+#     pause: {seconds: 90}
+#   - Weight: 55
+#     pause: {seconds: 240}
+#   - Weight: 82
+#     pause: {seconds: 90}
+#   - Weight: 89
+#     pause: {minutes: 5}
+#   - Weight: 100

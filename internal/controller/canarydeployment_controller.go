@@ -88,12 +88,9 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 
 		// Prevent lose current step when restart pod
-		if !utils.NowIsAfterOrEqualCompareDate(canaryDeploymentCrd.SyncAfter) {
-			log.Custom.Info("Next step is after", "date", canaryDeploymentCrd.SyncAfter, "app", canaryDeploymentCrd.Spec.AppName)
-			timeRemaing := utils.GetTimeRemaining(canaryDeploymentCrd.SyncAfter)
-			log.Custom.Info("Time remaining is", "step", canaryDeploymentCrd.CurrentStep, "time", timeRemaing, "app", canaryDeploymentCrd.Spec.AppName)
-
-			return ctrl.Result{RequeueAfter: timeRemaing}, nil
+		timeRemaing := CanaryTimeRemaing(&canaryDeploymentCrd)
+		if timeRemaing != nil {
+			return ctrl.Result{RequeueAfter: *timeRemaing}, nil
 		}
 
 		vs, _ := UpdateManifestDataFromCanaryCrdAndVs(&r.Client, &canaryDeploymentCrd, namespace)
@@ -204,6 +201,32 @@ func UpdateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploy
 
 	vs, _ := canary.UpdateVirtualServicePercentage(clientSet, canaryDeploymentCrd, namespace)
 	return vs, nil
+}
+
+// CanaryTimeRemaing
+// CanaryTimeRemaining return time remaining to a step. It's prevent loses
+// actual step on restart on restart pod/application, for example
+// This function performs the following actions:
+// 1 - Get time remaining for canary crd actual step
+//
+// Parameters:
+// - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
+//
+// Returns:
+// 1 - *time.Duration: The Time duration remaining or nil if canaryDeploymentCrd.syncAfter is after now
+func CanaryTimeRemaining(canaryDeploymentCrd *v1alpha1.CanaryDeployment) *time.Duration {
+
+	if !utils.NowIsAfterOrEqualCompareDate(canaryDeploymentCrd.SyncAfter) {
+		log.Custom.Info("Next step is after", "date", canaryDeploymentCrd.SyncAfter, "app", canaryDeploymentCrd.Spec.AppName)
+
+		timeRemaining := utils.GetTimeRemaining(canaryDeploymentCrd.SyncAfter)
+
+		log.Custom.Info("Time remaining is", "step", canaryDeploymentCrd.CurrentStep, "time", timeRemaining, "app", canaryDeploymentCrd.Spec.AppName)
+
+		return &timeRemaining
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
