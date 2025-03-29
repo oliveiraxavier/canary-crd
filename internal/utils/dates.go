@@ -56,7 +56,7 @@ func (dt DateTime) AddSeconds(seconds int64) DateTime {
 
 func NowIsAfterOrEqualCompareDate(dateToCompare string) bool {
 	parsedTime, _ := time.Parse(timeFormat, dateToCompare)
-	return Now().Time.After(parsedTime) || Now().Time.Equal(parsedTime)
+	return !Now().Time.Before(parsedTime)
 }
 
 // ToString returns the default string representation
