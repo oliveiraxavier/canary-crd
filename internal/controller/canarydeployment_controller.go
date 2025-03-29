@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"time"
 
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -95,17 +96,13 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{RequeueAfter: timeRemaing}, nil
 		}
 
-		_, _ = canary.SetCurrentStep(&r.Client, &canaryDeploymentCrd)
-
-		// Set next sync datetime to prevent lose current step when restart pod
-		_, _ = canary.SetSyncDate(&r.Client, &canaryDeploymentCrd)
-
-		vs, _ := canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeploymentCrd, namespace)
+		vs, _ := UpdateCanaryCrdAndVS(&r.Client, &canaryDeploymentCrd, namespace)
 
 		if canary.IsFullyPromoted(vs) {
 			log.Custom.Info("Canary deployment promoted", "app", canaryDeploymentCrd.Spec.AppName)
 			return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 		}
+
 		timeDuration := canary.GetRequeueTime(&canaryDeploymentCrd)
 
 		if timeDuration == 0 {
@@ -175,6 +172,24 @@ func CompareStableVersionWithNewVersion(clientSet *client.Client, canaryDeployme
 	}
 
 	return namespace, nil, nil
+}
+
+func UpdateCanaryCrdAndVS(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string) (*v1alpha3.VirtualService, error) {
+
+	_, err := canary.SetCurrentStep(clientSet, canaryDeploymentCrd)
+
+	if err != nil {
+		return nil, err
+	}
+	// Set next sync datetime to prevent lose current step when restart pod
+	_, err = canary.SetSyncDate(clientSet, canaryDeploymentCrd)
+
+	if err != nil {
+		return nil, err
+	}
+
+	vs, _ := canary.UpdateVirtualServicePercentage(clientSet, canaryDeploymentCrd, namespace)
+	return vs, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
