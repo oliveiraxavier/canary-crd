@@ -96,7 +96,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{RequeueAfter: timeRemaing}, nil
 		}
 
-		vs, _ := UpdateCanaryCrdAndVS(&r.Client, &canaryDeploymentCrd, namespace)
+		vs, _ := UpdateManifestDataFromCanaryCrdAndVs(&r.Client, &canaryDeploymentCrd, namespace)
 
 		if canary.IsFullyPromoted(vs) {
 			log.Custom.Info("Canary deployment promoted", "app", canaryDeploymentCrd.Spec.AppName)
@@ -153,9 +153,10 @@ func FinalizeReconcile(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.C
 //
 // This function performs the following actions:
 // 1. Compare canaryDeploymentCrd.Spec.Canary with canaryDeploymentCrd.Spec.Stable
+//
 // Parameters:
-//   - clientSet: A pointer to the Kubernetes client.
-//   - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
+// - clientSet: A pointer to the Kubernetes client.
+// - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
 //
 // Returns:
 // 1 - namespace
@@ -174,16 +175,29 @@ func CompareStableVersionWithNewVersion(clientSet *client.Client, canaryDeployme
 	return namespace, nil, nil
 }
 
-func UpdateCanaryCrdAndVS(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string) (*v1alpha3.VirtualService, error) {
-
+// UpdateCanaryCrdAndVS contains update manifests/objects in kubernetes cluster
+// This function performs the following actions:
+// 1 - Update step of Canary Crd
+// 2 - Update next sync date of Canary Crd
+// 3 - Update weight of canary and stable on Istio Virtual service manifest/object
+//
+// Parameters:
+// - clientSet: A pointer to the Kubernetes client.
+// - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
+// - namespace:
+//
+// Returns:
+// 1 - *v1alpha3.VirtualService: The Istio VirtualService for relationed.
+// 2 - error: An error if exists on returns of SetCurrentStep or SetSyncDate
+func UpdateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string) (*v1alpha3.VirtualService, error) {
+	// Add step value to Canary crd
 	_, err := canary.SetCurrentStep(clientSet, canaryDeploymentCrd)
-
 	if err != nil {
 		return nil, err
 	}
+
 	// Set next sync datetime to prevent lose current step when restart pod
 	_, err = canary.SetSyncDate(clientSet, canaryDeploymentCrd)
-
 	if err != nil {
 		return nil, err
 	}
