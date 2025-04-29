@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/oliveiraxavier/canary-crd/api/v1alpha1"
 	log "github.com/oliveiraxavier/canary-crd/internal/logs"
 
@@ -17,8 +19,13 @@ func GetStableDeployment(clientSet *client.Client, deploymentName string, namesp
 	deployment := &appsv1.Deployment{}
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: deploymentName, Namespace: namespace}, deployment)
 
+	if errors.IsNotFound(err) {
+		log.Custom.Info("Stable Deployment not found", "deployment name", deploymentName)
+		return nil, err
+	}
+
 	if err != nil {
-		log.Custom.Info("Error fetching Stable Deployment. Verify if exists in cluster", "deployment name", deploymentName)
+		log.Custom.Info("Error fetching Stable Deployment, verify if exists in cluster", "deployment name", deploymentName)
 		return nil, err
 	}
 
@@ -29,8 +36,13 @@ func GetCanaryDeployment(clientSet *client.Client, deploymentName string, namesp
 	deployment := &appsv1.Deployment{}
 	err := (*clientSet).Get(context.Background(), client.ObjectKey{Name: deploymentName + "-canary", Namespace: namespace}, deployment)
 
+	if errors.IsNotFound(err) {
+		log.Custom.Info("Canary Deployment not found", "deployment name", deploymentName+"-canary")
+		return nil, err
+	}
+
 	if err != nil {
-		log.Custom.Info("Error fetching Canary Deployment, not exists", "deployment name", deploymentName+"-canary")
+		log.Custom.Info("Error fetching Canary Deployment, verify if exists in cluster", "deployment name", deploymentName+"-canary")
 		return nil, err
 	}
 	return deployment, nil

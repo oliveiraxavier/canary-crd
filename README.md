@@ -134,20 +134,20 @@ spec:
   steps:
   - pause:
       seconds: 120
-    setWeight: 10
+    Weight: 10
   - pause:
       seconds: 90
-    setWeight: 20
+    Weight: 20
   - pause:
       seconds: 240
-    setWeight: 45
+    Weight: 45
   - pause:
       seconds: 90
-    setWeight: 75
+    Weight: 75
   - pause:
       minutes: 5
-    setWeight: 89
-  - setWeight: 100
+    Weight: 89
+  - Weight: 100
 ```
 
 ### To view coverage as html

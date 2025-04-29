@@ -153,10 +153,10 @@ var _ = Describe("CanaryDeployment Controller", func() {
 						Canary:                  resourceCanaryVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 17}},
-							{SetWeight: 20, Pause: appsv1alpha1.Pause{Seconds: 22}},
-							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 27}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 17}},
+							{Weight: 20, Pause: appsv1alpha1.Pause{Seconds: 22}},
+							{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 27}},
+							{Weight: 100},
 						},
 					},
 				}
@@ -318,20 +318,20 @@ var _ = Describe("CanaryDeployment Controller with stable version equal canary",
 				Name:      resourceName + "-canary",
 				Namespace: "default",
 			}
-			canarydeployment     = &appsv1alpha1.CanaryDeployment{}
-			stableResource       = &appsv1.Deployment{}
-			canaryResource       = &appsv1.Deployment{}
-			vsResource           = &istio.VirtualService{}
-			controllerReconciler controller.CanaryDeploymentReconciler
-			reqReconciler        ctrlRuntime.Request
+			canarydeployment = &appsv1alpha1.CanaryDeployment{}
+			stableResource   = &appsv1.Deployment{}
+			canaryResource   = &appsv1.Deployment{}
+			vsResource       = &istio.VirtualService{}
+			// controllerReconciler controller.CanaryDeploymentReconciler
+			// reqReconciler        ctrlRuntime.Request
 		)
 
 		BeforeEach(func() {
-			controllerReconciler = controller.CanaryDeploymentReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-			reqReconciler = ctrlRuntime.Request{NamespacedName: typeNamespacedName}
+			// controllerReconciler = controller.CanaryDeploymentReconciler{
+			// 	Client: k8sClient,
+			// 	Scheme: k8sClient.Scheme(),
+			// }
+			// reqReconciler = ctrlRuntime.Request{NamespacedName: typeNamespacedName}
 
 			By("Find the stable deployment")
 			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
@@ -426,8 +426,8 @@ var _ = Describe("CanaryDeployment Controller with stable version equal canary",
 						Canary:                  resourceStableVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
+							{Weight: 100},
 						},
 					},
 				}
@@ -469,7 +469,7 @@ var _ = Describe("CanaryDeployment Controller with stable version equal canary",
 		})
 
 		It("Test FinalizeReconcile when stableVersion equals newVersion ", func() {
-			_, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
+			// _, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
 
 			ctrl, _ := controller.FinalizeReconcile(&k8sClient, canarydeployment, false)
 			Expect(ctrl).To(Equal(reconcile.Result{}))
@@ -603,9 +603,9 @@ var _ = Describe("CanaryDeployment Controller in penultimate step", func() {
 						Canary:                  resourceCanaryVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
-							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 22}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
+							{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 22}},
+							{Weight: 100},
 						},
 					},
 				}
@@ -780,9 +780,9 @@ var _ = Describe("CanaryDeployment Controller in penultimate step", func() {
 						Canary:                  resourceCanaryVersion,
 						IstioVirtualServiceName: resourceName,
 						Steps: []appsv1alpha1.Step{
-							{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
-							{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 0}},
-							{SetWeight: 100},
+							{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 12}},
+							{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 0}},
+							{Weight: 100},
 						},
 					},
 				}

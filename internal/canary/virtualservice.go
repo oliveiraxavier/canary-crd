@@ -106,7 +106,7 @@ func UpdateVirtualServicePercentage(clientSet *client.Client, canaryDeployment *
 	vs, err := GetVirtualServiceForDeployment(clientSet, canaryDeployment.Spec.IstioVirtualServiceName, namespace)
 
 	if err == nil {
-		_, err = ReconfigureWeightVirtualService(clientSet, vs, canaryDeployment.Spec.Steps[canaryDeployment.CurrentStep-1].SetWeight)
+		_, err = ReconfigureWeightVirtualService(clientSet, vs, canaryDeployment.Spec.Steps[canaryDeployment.CurrentStep-1].Weight)
 		return vs, err
 	}
 

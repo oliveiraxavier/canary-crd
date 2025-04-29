@@ -84,32 +84,6 @@ metadata:
 data:
   APP_NAME: "nginx"
   LEVEL: "debug"
----
-# New for canary
-apiVersion: v1
-kind: Secret
-metadata:
-  name: nginx-secret-new
-type: Opaque
-data:
-  PASS: MTIzNA==
----
-# New for canary
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: nginx-new1-env
-data:
-  APP_NAME: "nginx-canary"
-  LEVEL: "debug"
----
-# New for canary
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: nginx-new2-env
-data:
-  APP_NAME: "nginx-canary"
-  LEVEL: "debug"
+
 
 

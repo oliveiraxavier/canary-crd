@@ -29,3 +29,6 @@ go.work
 # sonar
 .scannerwork/*
 */.scannerwork/*
+
+#istio manifests
+config/crd/bases/istio-crd.yaml

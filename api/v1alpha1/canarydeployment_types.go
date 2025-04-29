@@ -48,14 +48,14 @@ type CanaryDeploymentSpec struct {
 	// +kubebuilder:validation:listType=map
 	// +kubebuilder:validation:uniqueItems=true
 	// +kubebuilder:validation:items={"$ref":"#/definitions/Step"}
-	// +kubebuilder:validation:default=[{"setWeight":10,"pause":[{"minutes":60}]}]
+	// +kubebuilder:validation:default=[{"weight":10,"pause":[{"minutes":60}]}]
 	// +kubebuilder:validation:required
 	Steps []Step `json:"steps"`
 }
 type Step struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
-	SetWeight int32 `json:"setWeight"`
+	Weight int32 `json:"Weight"`
 
 	Pause Pause `json:"pause,omitempty"`
 }

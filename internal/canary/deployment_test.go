@@ -121,10 +121,10 @@ var _ = Describe("Test deployment", func() {
 				Canary:                  "1.2",
 				IstioVirtualServiceName: "fake-vs",
 				Steps: []appsv1alpha1.Step{
-					{SetWeight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
-					{SetWeight: 20, Pause: appsv1alpha1.Pause{Seconds: 15}},
-					{SetWeight: 50, Pause: appsv1alpha1.Pause{Seconds: 20}},
-					{SetWeight: 100},
+					{Weight: 10, Pause: appsv1alpha1.Pause{Seconds: 10}},
+					{Weight: 20, Pause: appsv1alpha1.Pause{Seconds: 15}},
+					{Weight: 50, Pause: appsv1alpha1.Pause{Seconds: 20}},
+					{Weight: 100},
 				},
 			},
 		}
