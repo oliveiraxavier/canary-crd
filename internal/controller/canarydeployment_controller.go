@@ -88,7 +88,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 
 		// Prevent lose current step when restart pod
-		timeRemaing := CanaryTimeRemaing(&canaryDeploymentCrd)
+		timeRemaing := CanaryTimeRemaining(&canaryDeploymentCrd)
 		if timeRemaing != nil {
 			return ctrl.Result{RequeueAfter: *timeRemaing}, nil
 		}

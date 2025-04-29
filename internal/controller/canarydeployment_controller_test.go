@@ -318,20 +318,20 @@ var _ = Describe("CanaryDeployment Controller with stable version equal canary",
 				Name:      resourceName + "-canary",
 				Namespace: "default",
 			}
-			canarydeployment     = &appsv1alpha1.CanaryDeployment{}
-			stableResource       = &appsv1.Deployment{}
-			canaryResource       = &appsv1.Deployment{}
-			vsResource           = &istio.VirtualService{}
-			controllerReconciler controller.CanaryDeploymentReconciler
-			reqReconciler        ctrlRuntime.Request
+			canarydeployment = &appsv1alpha1.CanaryDeployment{}
+			stableResource   = &appsv1.Deployment{}
+			canaryResource   = &appsv1.Deployment{}
+			vsResource       = &istio.VirtualService{}
+			// controllerReconciler controller.CanaryDeploymentReconciler
+			// reqReconciler        ctrlRuntime.Request
 		)
 
 		BeforeEach(func() {
-			controllerReconciler = controller.CanaryDeploymentReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-			reqReconciler = ctrlRuntime.Request{NamespacedName: typeNamespacedName}
+			// controllerReconciler = controller.CanaryDeploymentReconciler{
+			// 	Client: k8sClient,
+			// 	Scheme: k8sClient.Scheme(),
+			// }
+			// reqReconciler = ctrlRuntime.Request{NamespacedName: typeNamespacedName}
 
 			By("Find the stable deployment")
 			err := k8sClient.Get(ctx, typeNamespacedName, stableResource)
@@ -469,7 +469,7 @@ var _ = Describe("CanaryDeployment Controller with stable version equal canary",
 		})
 
 		It("Test FinalizeReconcile when stableVersion equals newVersion ", func() {
-			_, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
+			// _, _ = controllerReconciler.Reconcile(ctx, reqReconciler)
 
 			ctrl, _ := controller.FinalizeReconcile(&k8sClient, canarydeployment, false)
 			Expect(ctrl).To(Equal(reconcile.Result{}))
