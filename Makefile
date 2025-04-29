@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= oxmarcos/controller-canary-deployments:1.0.2
+IMG ?= oxmarcos/controller-canary-deployments:1.0.3
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
