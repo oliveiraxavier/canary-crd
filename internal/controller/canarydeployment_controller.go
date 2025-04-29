@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"time"
 
+	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +33,8 @@ import (
 	log "github.com/oliveiraxavier/canary-crd/internal/logs"
 	"github.com/oliveiraxavier/canary-crd/internal/utils"
 )
+
+const DEFAULT_TIME_REQUEUE = time.Second * 10
 
 // CanaryDeploymentReconciler reconciles a CanaryDeployment object
 type CanaryDeploymentReconciler struct {
@@ -59,25 +62,22 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if err := r.Client.Get(ctx, req.NamespacedName, &canaryDeploymentCrd); err != nil {
 
-		log.Custom.Info("Canary Deployment not found. The manifest possible deleted after fully promoted to stable", "app", req.Name, "namespace", req.Namespace)
+		log.Custom.Info("Canary Deployment not found. The manifest was possibly deleted after being fully promoted canary to stable", "app", req.Name, "namespace", req.Namespace)
+
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	appName := canaryDeploymentCrd.Spec.AppName
-	namespace := canaryDeploymentCrd.GetObjectMeta().GetNamespace()
-	newVersion := canaryDeploymentCrd.Spec.Canary
-	stableVersion := canaryDeploymentCrd.Spec.Stable
+	namespace, result, err := CompareStableVersionWithNewVersion(&r.Client, &canaryDeploymentCrd)
 
-	if stableVersion == newVersion {
-		result, err := FinalizeReconcile(&r.Client, &canaryDeploymentCrd, false)
-		return result, err
+	if result != nil && err != nil {
+		return *result, err
 	}
 
 	if canary.IsFinished(canaryDeploymentCrd) {
-		return RolloutCanaryAndResetIstioVs(&r.Client, &canaryDeploymentCrd, namespace, appName)
+		return RolloutCanaryAndResetIstioVs(&r.Client, &canaryDeploymentCrd, namespace, canaryDeploymentCrd.Spec.AppName)
 	}
 
-	stableDeployment, _ := canary.GetStableDeployment(&r.Client, appName, namespace)
+	stableDeployment, _ := canary.GetStableDeployment(&r.Client, canaryDeploymentCrd.Spec.AppName, namespace)
 
 	if stableDeployment != nil {
 
@@ -88,34 +88,30 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 
 		// Prevent lose current step when restart pod
-		if !utils.NowIsAfterOrEqualCompareDate(canaryDeploymentCrd.SyncAfter) {
-			log.Custom.Info("Next step is after", "date", canaryDeploymentCrd.SyncAfter, "app", appName)
-			timeRemaing := utils.GetTimeRemaining(canaryDeploymentCrd.SyncAfter)
-			log.Custom.Info("Time remaining is", "step", canaryDeploymentCrd.CurrentStep, "time", timeRemaing, "app", appName)
-
-			return ctrl.Result{RequeueAfter: timeRemaing}, nil
+		timeRemaing := CanaryTimeRemaining(&canaryDeploymentCrd)
+		if timeRemaing != nil {
+			return ctrl.Result{RequeueAfter: *timeRemaing}, nil
 		}
-		_, _ = canary.SetCurrentStep(&r.Client, &canaryDeploymentCrd)
-		// Set next sync datetime to prevent lose current step when restart pod
-		_, _ = canary.SetSyncDate(&r.Client, &canaryDeploymentCrd)
-		vs, _ := canary.UpdateVirtualServicePercentage(&r.Client, &canaryDeploymentCrd, namespace)
+
+		vs, _ := UpdateManifestDataFromCanaryCrdAndVs(&r.Client, &canaryDeploymentCrd, namespace)
 
 		if canary.IsFullyPromoted(vs) {
-			log.Custom.Info("Canary deployment promoted", "app", appName)
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			log.Custom.Info("Canary deployment promoted", "app", canaryDeploymentCrd.Spec.AppName)
+			return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 		}
+
 		timeDuration := canary.GetRequeueTime(&canaryDeploymentCrd)
 
 		if timeDuration == 0 {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+			return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 		}
 
 		return ctrl.Result{RequeueAfter: time.Duration(timeDuration) * time.Second}, nil
 
 	}
 
-	result, err := FinalizeReconcile(&r.Client, &canaryDeploymentCrd, true)
-	return result, err
+	return FinalizeReconcile(&r.Client, &canaryDeploymentCrd, true)
+
 }
 
 func RolloutCanaryAndResetIstioVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string, appName string) (ctrl.Result, error) {
@@ -123,11 +119,11 @@ func RolloutCanaryAndResetIstioVs(clientSet *client.Client, canaryDeploymentCrd 
 	err := canary.RolloutCanaryDeploymentToStable(clientSet, canaryDeploymentCrd, namespace, appName)
 
 	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 	}
 	_, err = canary.ResetFullPercentageToStable(clientSet, canaryDeploymentCrd, namespace)
 	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		return ctrl.Result{RequeueAfter: DEFAULT_TIME_REQUEUE}, nil
 	}
 
 	return ctrl.Result{}, nil
@@ -148,6 +144,89 @@ func FinalizeReconcile(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.C
 		log.Custom.Info("Canary deployment deleted. Fix manifest canary version and apply/try again", "name", name, "app", appName)
 	}
 	return ctrl.Result{}, err
+}
+
+// CompareStableVersionWithNewVersion compare actual version with new version
+//
+// This function performs the following actions:
+// 1. Compare canaryDeploymentCrd.Spec.Canary with canaryDeploymentCrd.Spec.Stable
+//
+// Parameters:
+// - clientSet: A pointer to the Kubernetes client.
+// - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
+//
+// Returns:
+// 1 - namespace
+// 2 - ctrl.Result: The result of the reconciliation (requeue instructions).
+// 3 - error: An error if exists
+func CompareStableVersionWithNewVersion(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment) (string, *ctrl.Result, error) {
+	newVersion := canaryDeploymentCrd.Spec.Canary
+	stableVersion := canaryDeploymentCrd.Spec.Stable
+	namespace := canaryDeploymentCrd.GetObjectMeta().GetNamespace()
+
+	if stableVersion == newVersion {
+		result, err := FinalizeReconcile(clientSet, canaryDeploymentCrd, false)
+		return namespace, &result, err
+	}
+
+	return namespace, nil, nil
+}
+
+// UpdateCanaryCrdAndVS contains update manifests/objects in kubernetes cluster
+// This function performs the following actions:
+// 1 - Update step of Canary Crd
+// 2 - Update next sync date of Canary Crd
+// 3 - Update weight of canary and stable on Istio Virtual service manifest/object
+//
+// Parameters:
+// - clientSet: A pointer to the Kubernetes client.
+// - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
+// - namespace:
+//
+// Returns:
+// 1 - *v1alpha3.VirtualService: The Istio VirtualService for relationed.
+// 2 - error: An error if exists on returns of SetCurrentStep or SetSyncDate
+func UpdateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string) (*v1alpha3.VirtualService, error) {
+	// Add step value to Canary crd
+	_, err := canary.SetCurrentStep(clientSet, canaryDeploymentCrd)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set next sync datetime to prevent lose current step when restart pod
+	_, err = canary.SetSyncDate(clientSet, canaryDeploymentCrd)
+	if err != nil {
+		return nil, err
+	}
+
+	vs, _ := canary.UpdateVirtualServicePercentage(clientSet, canaryDeploymentCrd, namespace)
+	return vs, nil
+}
+
+// CanaryTimeRemaing
+// CanaryTimeRemaining return time remaining to a step. It's prevent loses
+// actual step on restart on restart pod/application, for example
+// This function performs the following actions:
+// 1 - Get time remaining for canary crd actual step
+//
+// Parameters:
+// - canaryDeploymentCrd: A pointer to the CanaryDeployment custom resource.
+//
+// Returns:
+// 1 - *time.Duration: The Time duration remaining or nil if canaryDeploymentCrd.syncAfter is after now
+func CanaryTimeRemaining(canaryDeploymentCrd *v1alpha1.CanaryDeployment) *time.Duration {
+
+	if !utils.NowIsAfterOrEqualCompareDate(canaryDeploymentCrd.SyncAfter) {
+		log.Custom.Info("Next step is after", "date", canaryDeploymentCrd.SyncAfter, "app", canaryDeploymentCrd.Spec.AppName)
+
+		timeRemaining := utils.GetTimeRemaining(canaryDeploymentCrd.SyncAfter)
+
+		log.Custom.Info("Time remaining is", "step", canaryDeploymentCrd.CurrentStep, "time", timeRemaining, "app", canaryDeploymentCrd.Spec.AppName)
+
+		return &timeRemaining
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
