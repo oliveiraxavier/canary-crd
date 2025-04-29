@@ -420,7 +420,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: oxmarcos/controller-canary-deployments:1.0.2
+        image: oxmarcos/controller-canary-deployments:1.0.3
         livenessProbe:
           httpGet:
             path: /healthz
