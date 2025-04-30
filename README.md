@@ -103,15 +103,12 @@ kubectl apply -f dist/install.yaml
 ```sh
 kubectl apply -f dist/install.yaml
 kubectl apply -f config/sample-deploy/deploy-v1.yaml
-kubectl apply -f config/sample-deploy/deploy-v2.yaml
 kubectl apply -f config/samples/apps_v1alpha1_canarydeployment.yaml
 
 kubectl get vs nginx -n default -o yaml
-kubectl get vs nginx-new -n default -o yaml
 kubectl get deploy --l="run-type: stable" -n default
 kubectl get deploy --l="run-type: canary" -n default
 kubectl get canarydeployment canarydeployment-1 -n default -o yaml
-kubectl get canarydeployment canarydeployment-2 -n default -o yaml
 ```
 
 ### Structure of this CRD
@@ -132,22 +129,22 @@ spec:
   canary: 1.27-alpine
   stable: 1.26-alpine
   steps:
-  - pause:
+  - weight: 10
+    pause:
       seconds: 120
-    Weight: 10
-  - pause:
+  - weight: 20
+    pause:
       seconds: 90
-    Weight: 20
-  - pause:
+  - weight: 45
+    pause:
       seconds: 240
-    Weight: 45
-  - pause:
+  - weight: 75
+    pause:
       seconds: 90
-    Weight: 75
-  - pause:
+  - weight: 89
+    pause:
       minutes: 5
-    Weight: 89
-  - Weight: 100
+  - weight: 100
 ```
 
 ### To view coverage as html

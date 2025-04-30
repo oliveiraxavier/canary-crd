@@ -55,7 +55,7 @@ type CanaryDeploymentSpec struct {
 type Step struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
-	Weight int32 `json:"Weight"`
+	Weight int32 `json:"weight"`
 
 	Pause Pause `json:"pause,omitempty"`
 }
