@@ -83,7 +83,7 @@ metadata:
   name: nginx-env
 data:
   APP_NAME: "nginx"
-  LEVEL: "debug
+  LEVEL: "debug"
 ---
 apiVersion: v1
 kind: Secret
@@ -91,3 +91,4 @@ metadata:
   name: nginx-secret
 data:
   MY_SECRET: YXNkZmFkZg==
+
