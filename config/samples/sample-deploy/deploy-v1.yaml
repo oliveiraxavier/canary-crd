@@ -7,7 +7,7 @@ metadata:
     app: nginx
   name: nginx
 spec:
-  replicas: 1
+  replicas: 5
   selector:
     matchLabels:
       run-type: stable
@@ -83,7 +83,11 @@ metadata:
   name: nginx-env
 data:
   APP_NAME: "nginx"
-  LEVEL: "debug"
-
-
-
+  LEVEL: "debug
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-secret
+data:
+  MY_SECRET: YXNkZmFkZg==
