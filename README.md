@@ -1,18 +1,22 @@
 # test
+
 // TODO(user): Add simple overview of use/purpose
 
 ## Description
+
 // TODO(user): An in-depth paragraph about your project and overview of use
 
 ## Getting Started
 
 ### Prerequisites
+
 - go version v1.23.0+
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
 
 ### To Deploy on the cluster
+
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
@@ -48,6 +52,7 @@ kubectl apply -k config/samples/
 >**NOTE**: Ensure that the samples has default values to test it out.
 
 ### To Uninstall
+
 **Delete the instances (CRs) from the cluster:**
 
 ```sh
@@ -112,6 +117,7 @@ kubectl get canarydeployment canarydeployment-1 -n default -o yaml
 ```
 
 ### Structure of this CRD
+
 ```yaml
 apiVersion: mox.app.br/v1alpha1
 kind: CanaryDeployment
@@ -148,10 +154,12 @@ spec:
 ```
 
 ### To view coverage as html
-```
+
+```sh
 make test
 go tool cover -html cover.out -o cover.html
-```
+```bash
+
 ### By providing a Helm Chart
 
 1. Build the chart using the optional helm plugin
@@ -170,7 +178,12 @@ the '--force' flag and manually ensure that any custom configuration
 previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
 is manually re-applied afterwards.
 
+# Enviroment variables for this controller
+
+TIME_TO_WAIT_REMOVE_CANARY_AFTER_PROMOTION: Seconds to wait after full promoted and before removing canary deployment
+
 ## Contributing
+
 // TODO(user): Add detailed information on how you would like others to contribute to this project
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
@@ -192,4 +205,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
