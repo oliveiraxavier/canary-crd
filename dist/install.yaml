@@ -420,7 +420,10 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: oxmarcos/controller-canary-deployments:1.0.3
+        env:
+        - name: TIME_TO_WAIT_REMOVE_CANARY_AFTER_PROMOTION
+          value: "10"
+        image: oxmarcos/controller-canary-deployments:1.0.4
         livenessProbe:
           httpGet:
             path: /healthz

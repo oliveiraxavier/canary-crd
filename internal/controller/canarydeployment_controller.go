@@ -67,14 +67,14 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	namespace, result, err := CompareStableVersionWithNewVersion(&r.Client, &canaryDeploymentCrd)
+	namespace, result, err := compareStableVersionWithNewVersion(&r.Client, &canaryDeploymentCrd)
 
 	if result != nil && err != nil {
 		return *result, err
 	}
 
 	if canary.IsFinished(canaryDeploymentCrd) {
-		return RolloutCanaryAndResetIstioVs(&r.Client, &canaryDeploymentCrd, namespace, canaryDeploymentCrd.Spec.AppName)
+		return rolloutCanaryAndResetIstioVs(&r.Client, &canaryDeploymentCrd, namespace, canaryDeploymentCrd.Spec.AppName)
 	}
 
 	stableDeployment, _ := canary.GetStableDeployment(&r.Client, canaryDeploymentCrd.Spec.AppName, namespace)
@@ -88,12 +88,12 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 
 		// Prevent lose current step when restart pod
-		timeRemaing := CanaryTimeRemaining(&canaryDeploymentCrd)
+		timeRemaing := canaryTimeRemaining(&canaryDeploymentCrd)
 		if timeRemaing != nil {
 			return ctrl.Result{RequeueAfter: *timeRemaing}, nil
 		}
 
-		vs, _ := UpdateManifestDataFromCanaryCrdAndVs(&r.Client, &canaryDeploymentCrd, namespace)
+		vs, _ := updateManifestDataFromCanaryCrdAndVs(&r.Client, &canaryDeploymentCrd, namespace)
 
 		if canary.IsFullyPromoted(vs) {
 			log.Custom.Info("Canary deployment promoted", "app", canaryDeploymentCrd.Spec.AppName)
@@ -114,7 +114,7 @@ func (r *CanaryDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 }
 
-func RolloutCanaryAndResetIstioVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string, appName string) (ctrl.Result, error) {
+func rolloutCanaryAndResetIstioVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string, appName string) (ctrl.Result, error) {
 
 	err := canary.RolloutCanaryDeploymentToStable(clientSet, canaryDeploymentCrd, namespace, appName)
 
@@ -159,7 +159,7 @@ func FinalizeReconcile(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.C
 // 1 - namespace
 // 2 - ctrl.Result: The result of the reconciliation (requeue instructions).
 // 3 - error: An error if exists
-func CompareStableVersionWithNewVersion(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment) (string, *ctrl.Result, error) {
+func compareStableVersionWithNewVersion(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment) (string, *ctrl.Result, error) {
 	newVersion := canaryDeploymentCrd.Spec.Canary
 	stableVersion := canaryDeploymentCrd.Spec.Stable
 	namespace := canaryDeploymentCrd.GetObjectMeta().GetNamespace()
@@ -186,7 +186,7 @@ func CompareStableVersionWithNewVersion(clientSet *client.Client, canaryDeployme
 // Returns:
 // 1 - *v1alpha3.VirtualService: The Istio VirtualService for relationed.
 // 2 - error: An error if exists on returns of SetCurrentStep or SetSyncDate
-func UpdateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string) (*v1alpha3.VirtualService, error) {
+func updateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploymentCrd *v1alpha1.CanaryDeployment, namespace string) (*v1alpha3.VirtualService, error) {
 	// Add step value to Canary crd
 	_, err := canary.SetCurrentStep(clientSet, canaryDeploymentCrd)
 	if err != nil {
@@ -204,7 +204,7 @@ func UpdateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploy
 }
 
 // CanaryTimeRemaing
-// CanaryTimeRemaining return time remaining to a step. It's prevent loses
+// canaryTimeRemaining return time remaining to a step. It's prevent loses
 // actual step on restart on restart pod/application, for example
 // This function performs the following actions:
 // 1 - Get time remaining for canary crd actual step
@@ -214,7 +214,7 @@ func UpdateManifestDataFromCanaryCrdAndVs(clientSet *client.Client, canaryDeploy
 //
 // Returns:
 // 1 - *time.Duration: The Time duration remaining or nil if canaryDeploymentCrd.syncAfter is after now
-func CanaryTimeRemaining(canaryDeploymentCrd *v1alpha1.CanaryDeployment) *time.Duration {
+func canaryTimeRemaining(canaryDeploymentCrd *v1alpha1.CanaryDeployment) *time.Duration {
 
 	if !utils.NowIsAfterOrEqualCompareDate(canaryDeploymentCrd.SyncAfter) {
 		log.Custom.Info("Next step is after", "date", canaryDeploymentCrd.SyncAfter, "app", canaryDeploymentCrd.Spec.AppName)

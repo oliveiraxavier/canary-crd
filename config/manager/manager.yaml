@@ -93,6 +93,9 @@ spec:
             cpu: 10m
             memory: 64Mi
         volumeMounts: []
+        env:
+        - name: TIME_TO_WAIT_REMOVE_CANARY_AFTER_PROMOTION
+          value: "10"
       volumes: []
       serviceAccountName: canary-deployment-controller-manager-c-mng
       terminationGracePeriodSeconds: 10

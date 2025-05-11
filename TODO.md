@@ -1,0 +1,1 @@
+Remover secrets ou config maps do antigo deploy se a versão canary não utilizá-los.
